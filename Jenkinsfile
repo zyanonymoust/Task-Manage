@@ -31,6 +31,7 @@ pipeline {
             steps {
                 dir('frontend') {
                     bat 'npm.cmd install'
+                    bat 'npx.cmd playwright install'
                     bat 'npx.cmd playwright test'
                 }
             }
