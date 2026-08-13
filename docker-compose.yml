@@ -55,13 +55,13 @@ services:
       context: ./frontend
 
     container_name: task-frontend
-    restart: always
+    restart: "no"
 
     depends_on:
       - api
 
     ports:
-      - "3000:80"
+      - "3001:80"
 
     networks:
       - task-network
