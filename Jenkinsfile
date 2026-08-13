@@ -27,6 +27,15 @@ pipeline {
             }
         }
 
+        stage('E2E Test') {
+            steps {
+                dir('frontend') {
+                    bat 'npm.cmd install'
+                    bat 'npx.cmd playwright test'
+                }
+            }
+        }
+
     }
 
     post {
