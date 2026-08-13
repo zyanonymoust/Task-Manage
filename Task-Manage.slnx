@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="docker-compose.yml" />
+  </Folder>
+  <Project Path="frontend/frontend.esproj">
+    <Build />
+    <Deploy />
+  </Project>
+  <Project Path="Task-Manage.AppHost/Task-Manage.AppHost.csproj" />
+  <Project Path="Task-Manage.Server/Task-Manage.Server.csproj" />
+  <Project Path="Task-Manage1.Tests/Task-Manage1.Tests.csproj" Id="eb8e450d-f76f-4666-bf3d-b010153b2d2b" />
+</Solution>

@@ -1,0 +1,74 @@
+services:
+
+  postgres:
+    image: postgres:16
+    container_name: task-postgres
+    restart: always
+
+    environment:
+      POSTGRES_DB: TaskDb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1234
+
+    ports:
+      - "5434:5432"
+
+    volumes:
+      - task_postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d TaskDb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+    networks:
+      - task-network
+
+
+  api:
+    build:
+      context: ./Task-Manage.Server
+
+    container_name: task-api
+    restart: always
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+
+      ConnectionStrings__TaskDb: Host=postgres;Port=5432;Database=TaskDb;Username=postgres;Password=1234
+
+    ports:
+      - "8080:8080"
+
+    networks:
+      - task-network
+
+
+  frontend:
+    build:
+      context: ./frontend
+
+    container_name: task-frontend
+    restart: always
+
+    depends_on:
+      - api
+
+    ports:
+      - "3000:80"
+
+    networks:
+      - task-network
+
+
+volumes:
+  task_postgres_data:
+
+
+networks:
+  task-network:
