@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test('Task Management page should load', async ({ page }) => {
 
-    await page.goto('http://localhost:3000');
+    await page.goto('http://localhost:3001');
 
     await expect(
         page.getByRole('heading', { name: 'Task Management' })
@@ -15,7 +15,7 @@ test('User should be able to add a task', async ({ page }, testInfo) => {
     const taskTitle =
         `Playwright Test Task ${testInfo.project.name} ${Date.now()}`;
 
-    await page.goto('http://localhost:3000');
+    await page.goto('http://localhost:3001');
 
     await page
         .getByPlaceholder('Task title')
@@ -54,7 +54,7 @@ test('User should be able to update a task', async ({ page }, testInfo) => {
     const updatedTitle =
         `Updated ${taskTitle}`;
 
-    await page.goto('http://localhost:3000');
+    await page.goto('http://localhost:3001');
 
     await page
         .getByPlaceholder('Task title')
@@ -126,7 +126,7 @@ test('User should be able to delete a task', async ({ page }, testInfo) => {
     const taskTitle =
         `Delete Test ${testInfo.project.name} ${Date.now()}`;
 
-    await page.goto('http://localhost:3000');
+    await page.goto('http://localhost:3001');
 
     await page
         .getByPlaceholder('Task title')
