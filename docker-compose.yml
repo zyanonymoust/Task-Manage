@@ -12,7 +12,7 @@ services:
 
 
     ports:
-      - "5434:5432"
+      - "5435:5432"
 
     volumes:
       - task_postgres_data:/var/lib/postgresql/data
@@ -55,7 +55,7 @@ services:
       context: ./frontend
 
     container_name: task-frontend
-    restart: "no"
+    restart: always
 
     depends_on:
       - api
