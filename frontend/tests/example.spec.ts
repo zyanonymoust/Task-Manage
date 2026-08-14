@@ -165,10 +165,22 @@ test('User should be able to delete a task', async ({ page }, testInfo) => {
         .getByRole('button', { name: 'Delete' })
         .click();
 
-    await expect(
+    const createdHeading =
         page.getByRole('heading', {
             name: taskTitle
-        })
-    ).not.toBeVisible();
+        });
+
+    await expect(createdHeading).toBeVisible();
+
+    const createdCard =
+        createdHeading.locator(
+            'xpath=ancestor::*[.//button[normalize-space()="Delete"]][1]'
+        );
+
+    await createdCard
+        .getByRole('button', { name: 'Delete' })
+        .click();
+
+    await expect(createdHeading).not.toBeVisible();
 
 });
