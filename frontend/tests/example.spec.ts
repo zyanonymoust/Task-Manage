@@ -5,7 +5,9 @@ test('Task Management page should load', async ({ page }) => {
     await page.goto('http://localhost:3001');
 
     await expect(
-        page.getByRole('heading', { name: 'Task Management' })
+        page.getByRole('heading', {
+            name: 'Task Management'
+        })
     ).toBeVisible();
 
 });
@@ -35,14 +37,30 @@ test('User should be able to add a task', async ({ page }, testInfo) => {
         .fill('15:00');
 
     await page
-        .getByRole('button', { name: 'Add Task' })
+        .getByRole('button', {
+            name: 'Add Task'
+        })
         .click();
 
-    await expect(
+    const createdHeading =
         page.getByRole('heading', {
             name: taskTitle
+        });
+
+    await expect(createdHeading).toBeVisible();
+
+    const createdCard =
+        createdHeading.locator(
+            'xpath=ancestor::*[.//button[normalize-space()="Delete"]][1]'
+        );
+
+    await createdCard
+        .getByRole('button', {
+            name: 'Delete'
         })
-    ).toBeVisible();
+        .click();
+
+    await expect(createdHeading).not.toBeVisible();
 
 });
 
@@ -74,7 +92,9 @@ test('User should be able to update a task', async ({ page }, testInfo) => {
         .fill('16:00');
 
     await page
-        .getByRole('button', { name: 'Add Task' })
+        .getByRole('button', {
+            name: 'Add Task'
+        })
         .click();
 
     const taskHeading =
@@ -90,7 +110,9 @@ test('User should be able to update a task', async ({ page }, testInfo) => {
         );
 
     await taskCard
-        .getByRole('button', { name: 'Edit' })
+        .getByRole('button', {
+            name: 'Edit'
+        })
         .click();
 
     const inputs = page.locator('input');
@@ -106,18 +128,36 @@ test('User should be able to update a task', async ({ page }, testInfo) => {
             await input.fill(updatedTitle);
 
             break;
+
         }
+
     }
 
     await page
-        .getByRole('button', { name: 'Save' })
+        .getByRole('button', {
+            name: 'Save'
+        })
         .click();
 
-    await expect(
+    const updatedHeading =
         page.getByRole('heading', {
             name: updatedTitle
+        });
+
+    await expect(updatedHeading).toBeVisible();
+
+    const updatedCard =
+        updatedHeading.locator(
+            'xpath=ancestor::*[.//button[normalize-space()="Delete"]][1]'
+        );
+
+    await updatedCard
+        .getByRole('button', {
+            name: 'Delete'
         })
-    ).toBeVisible();
+        .click();
+
+    await expect(updatedHeading).not.toBeVisible();
 
 });
 
@@ -146,7 +186,9 @@ test('User should be able to delete a task', async ({ page }, testInfo) => {
         .fill('17:00');
 
     await page
-        .getByRole('button', { name: 'Add Task' })
+        .getByRole('button', {
+            name: 'Add Task'
+        })
         .click();
 
     const taskHeading =
@@ -162,25 +204,11 @@ test('User should be able to delete a task', async ({ page }, testInfo) => {
         );
 
     await taskCard
-        .getByRole('button', { name: 'Delete' })
+        .getByRole('button', {
+            name: 'Delete'
+        })
         .click();
 
-    const createdHeading =
-        page.getByRole('heading', {
-            name: taskTitle
-        });
-
-    await expect(createdHeading).toBeVisible();
-
-    const createdCard =
-        createdHeading.locator(
-            'xpath=ancestor::*[.//button[normalize-space()="Delete"]][1]'
-        );
-
-    await createdCard
-        .getByRole('button', { name: 'Delete' })
-        .click();
-
-    await expect(createdHeading).not.toBeVisible();
+    await expect(taskHeading).not.toBeVisible();
 
 });
