@@ -273,7 +273,10 @@ test(
 
         await page
             .getByPlaceholder(
-                "Description"
+                "Description",
+                {
+                    exact: true
+                }
             )
             .fill(
                 "Task for CRUD testing"

@@ -11,69 +11,136 @@ public class TasksController : ControllerBase
 {
     private readonly AppDbContext _db;
 
-    public TasksController(AppDbContext db)
+    public TasksController(
+        AppDbContext db)
     {
         _db = db;
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetTasks()
+    public async Task<IActionResult>
+        GetTasks()
     {
-        var tasks = await _db.Tasks
-            .OrderBy(x => x.DueDate)
-            .ThenBy(x => x.DueTime)
-            .ToListAsync();
+        var tasks =
+            await _db.Tasks
+                .OrderBy(
+                    task =>
+                        task.DueDate
+                )
+                .ThenBy(
+                    task =>
+                        task.DueTime
+                )
+                .ToListAsync();
 
         return Ok(tasks);
     }
 
     [HttpPost]
-    public async Task<IActionResult> AddTask(TaskItem task)
+    public async Task<IActionResult>
+        AddTask(TaskItem task)
     {
+        var validationError =
+            ValidateTask(task);
+
+        if (
+            validationError != null
+        )
+        {
+            return validationError;
+        }
+
         task.Id = 0;
-        task.CreatedAt = DateTime.UtcNow;
+
+        task.Title =
+            task.Title.Trim();
+
+        task.CreatedAt =
+            DateTime.UtcNow;
+
         task.UpdatedAt = null;
 
-        if (task.Status == "Completed")
+        if (
+            task.Status ==
+            "Completed"
+        )
         {
-            task.CompletedAt = DateTime.UtcNow;
+            task.CompletedAt =
+                DateTime.UtcNow;
         }
         else
         {
             task.CompletedAt = null;
         }
 
-        await _db.Tasks.AddAsync(task);
+        await _db.Tasks.AddAsync(
+            task
+        );
+
         await _db.SaveChangesAsync();
 
         return Ok(task);
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateTask(
-        int id,
-        TaskItem updatedTask)
+    public async Task<IActionResult>
+        UpdateTask(
+            int id,
+            TaskItem updatedTask)
     {
-        var task = await _db.Tasks.FindAsync(id);
+        var validationError =
+            ValidateTask(updatedTask);
 
-        if (task == null)
+        if (
+            validationError != null
+        )
+        {
+            return validationError;
+        }
+
+        var task =
+            await _db.Tasks.FindAsync(
+                id
+            );
+
+        if (
+            task == null
+        )
         {
             return NotFound();
         }
 
-        task.Title = updatedTask.Title;
-        task.Description = updatedTask.Description;
-        task.Status = updatedTask.Status;
-        task.Priority = updatedTask.Priority;
-        task.DueDate = updatedTask.DueDate;
-        task.DueTime = updatedTask.DueTime;
-        task.Remark = updatedTask.Remark;
+        task.Title =
+            updatedTask.Title.Trim();
 
-        task.UpdatedAt = DateTime.UtcNow;
+        task.Description =
+            updatedTask.Description;
 
-        if (updatedTask.Status == "Completed")
+        task.Status =
+            updatedTask.Status;
+
+        task.Priority =
+            updatedTask.Priority;
+
+        task.DueDate =
+            updatedTask.DueDate;
+
+        task.DueTime =
+            updatedTask.DueTime;
+
+        task.Remark =
+            updatedTask.Remark;
+
+        task.UpdatedAt =
+            DateTime.UtcNow;
+
+        if (
+            updatedTask.Status ==
+            "Completed"
+        )
         {
-            task.CompletedAt ??= DateTime.UtcNow;
+            task.CompletedAt ??=
+                DateTime.UtcNow;
         }
         else
         {
@@ -86,11 +153,17 @@ public class TasksController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteTask(int id)
+    public async Task<IActionResult>
+        DeleteTask(int id)
     {
-        var task = await _db.Tasks.FindAsync(id);
+        var task =
+            await _db.Tasks.FindAsync(
+                id
+            );
 
-        if (task == null)
+        if (
+            task == null
+        )
         {
             return NotFound();
         }
@@ -100,5 +173,51 @@ public class TasksController : ControllerBase
         await _db.SaveChangesAsync();
 
         return Ok();
+    }
+
+    private BadRequestObjectResult?
+        ValidateTask(TaskItem task)
+    {
+        if (
+            string.IsNullOrWhiteSpace(
+                task.Title
+            )
+        )
+        {
+            return BadRequest(
+                new ProblemDetails
+                {
+                    Title =
+                        "Invalid task",
+
+                    Detail =
+                        "Title is required."
+                }
+            );
+        }
+
+        var malaysiaToday =
+            DateOnly.FromDateTime(
+                DateTime.UtcNow.AddHours(8)
+            );
+
+        if (
+            task.DueDate <
+            malaysiaToday
+        )
+        {
+            return BadRequest(
+                new ProblemDetails
+                {
+                    Title =
+                        "Invalid due date",
+
+                    Detail =
+                        "Due date cannot be in the past."
+                }
+            );
+        }
+
+        return null;
     }
 }
