@@ -991,15 +991,15 @@ function TaskManagement() {
                             >
 
                                 <option value="created">
-                                    Task Created Date
+                                    Created Date
                                 </option>
 
                                 <option value="due">
-                                    Task Due Date
+                                    Due Date
                                 </option>
 
                                 <option value="updated">
-                                    Last Updated Date
+                                    Last Updated
                                 </option>
 
                             </select>
@@ -1128,15 +1128,15 @@ function TaskManagement() {
                                             >
 
                                                 <option value="Low">
-                                                    Low Priority
+                                                    Low 
                                                 </option>
 
                                                 <option value="Medium">
-                                                    Medium Priority
+                                                    Medium
                                                 </option>
 
                                                 <option value="High">
-                                                    High Priority
+                                                    High
                                                 </option>
 
                                             </select>
