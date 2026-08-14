@@ -69,8 +69,10 @@ async function createTask(
         response.ok()
     ).toBeTruthy();
 
-    return await response.json()
-        as CreatedTask;
+    const data: CreatedTask =
+        await response.json();
+
+    return data;
 
 }
 
@@ -92,7 +94,7 @@ async function deleteTasks(
 }
 
 test(
-    "Task Management page and controls should load",
+    "Task Management page should load",
     async ({ page }) => {
 
         await page.goto(
@@ -234,12 +236,14 @@ test(
             response.status()
         ).toBe(400);
 
-        await expect(
-            response.json()
-        ).resolves.toMatchObject({
-            detail:
-                "Due date cannot be in the past."
-        });
+        const result =
+            await response.json();
+
+        expect(
+            result.detail
+        ).toBe(
+            "Due date cannot be in the past."
+        );
 
     }
 );
@@ -501,70 +505,73 @@ test(
 
         try {
 
-            ids.push(
-                (
-                    await createTask(
-                        request,
-                        {
-                            title:
-                                `${token}-Alpha`,
-                            description:
-                                "unique-description-search",
-                            remark: "",
-                            status:
-                                "Pending",
-                            priority:
-                                "Low",
-                            dueDate:
-                                localDate(3),
-                            dueTime:
-                                "09:00:00"
-                        }
-                    )
-                ).id
-            );
+            const firstTask =
+                await createTask(
+                    request,
+                    {
+                        title:
+                            `${token}-Alpha`,
+                        description:
+                            "unique-description-search",
+                        remark: "",
+                        status:
+                            "Pending",
+                        priority:
+                            "Low",
+                        dueDate:
+                            localDate(3),
+                        dueTime:
+                            "09:00:00"
+                    }
+                );
 
             ids.push(
-                (
-                    await createTask(
-                        request,
-                        {
-                            title:
-                                `${token}-Beta`,
-                            description: "",
-                            remark:
-                                "unique-remark-search",
-                            status:
-                                "In Progress",
-                            priority:
-                                "High",
-                            dueDate:
-                                localDate(4),
-                            dueTime:
-                                "10:00:00"
-                        }
-                    )
-                ).id
+                firstTask.id
             );
 
+            const secondTask =
+                await createTask(
+                    request,
+                    {
+                        title:
+                            `${token}-Beta`,
+                        description: "",
+                        remark:
+                            "unique-remark-search",
+                        status:
+                            "In Progress",
+                        priority:
+                            "High",
+                        dueDate:
+                            localDate(4),
+                        dueTime:
+                            "10:00:00"
+                    }
+                );
+
             ids.push(
-                (
-                    await createTask(
-                        request,
-                        {
-                            title:
-                                `${token}-Gamma`,
-                            status:
-                                "Completed",
-                            priority:
-                                "Medium",
-                            dueDate:
-                                localDate(5),
-                            dueTime:
-                                "11:00:00"
-                        }
-                    )
-                ).id
+                secondTask.id
+            );
+
+            const thirdTask =
+                await createTask(
+                    request,
+                    {
+                        title:
+                            `${token}-Gamma`,
+                        status:
+                            "Completed",
+                        priority:
+                            "Medium",
+                        dueDate:
+                            localDate(5),
+                        dueTime:
+                            "11:00:00"
+                    }
+                );
+
+            ids.push(
+                thirdTask.id
             );
 
             await page.goto(
@@ -753,17 +760,17 @@ test(
                 index++
             ) {
 
+                const numberText =
+                    index < 10
+                        ? `0${index}`
+                        : `${index}`;
+
                 const task =
                     await createTask(
                         request,
                         {
                             title:
-                                `${token}-${index
-                                    .toString()
-                                    .padStart(
-                                        2,
-                                        "0"
-                                    )}`,
+                                `${token}-${numberText}`,
                             dueDate:
                                 localDate(index),
                             dueTime:
