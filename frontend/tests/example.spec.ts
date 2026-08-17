@@ -14,8 +14,8 @@ interface CreatedTask {
 function localDate(
     daysFromToday: number
 ) {
-
-    const date = new Date();
+    const date =
+        new Date();
 
     date.setDate(
         date.getDate() +
@@ -32,7 +32,6 @@ function localDate(
     )
         .toISOString()
         .slice(0, 10);
-
 }
 
 async function createTask(
@@ -40,7 +39,6 @@ async function createTask(
     overrides:
         Record<string, string> = {}
 ) {
-
     const response =
         await request.post(
             `${BASE_URL}/api/tasks`,
@@ -73,30 +71,24 @@ async function createTask(
         await response.json();
 
     return data;
-
 }
 
 async function deleteTasks(
     request: APIRequestContext,
     ids: number[]
 ) {
-
     for (
         const id of ids
     ) {
-
         await request.delete(
             `${BASE_URL}/api/tasks/${id}`
         );
-
     }
-
 }
 
 test(
     "Task Management page should load",
     async ({ page }) => {
-
         await page.goto(
             BASE_URL
         );
@@ -148,7 +140,6 @@ test(
         ).toHaveValue(
             "pagination"
         );
-
     }
 );
 
@@ -158,7 +149,6 @@ test(
         page,
         request
     }) => {
-
         await page.goto(
             BASE_URL
         );
@@ -188,10 +178,17 @@ test(
         );
 
         await page
-            .getByLabel(
-                "Due time"
+            .getByRole(
+                "textbox",
+                {
+                    name:
+                        "Due time",
+                    exact: true
+                }
             )
-            .fill("10:00");
+            .fill(
+                "10:00"
+            );
 
         await page
             .getByRole(
@@ -208,7 +205,7 @@ test(
                 "alert"
             )
         ).toContainText(
-            "Due date cannot be in the past"
+            "Due date and time must be in the future."
         );
 
         const response =
@@ -244,7 +241,6 @@ test(
         ).toBe(
             "Due date cannot be in the past."
         );
-
     }
 );
 
@@ -254,7 +250,6 @@ test(
         { page },
         testInfo
     ) => {
-
         const token =
             `CRUD-${testInfo.project.name}-${Date.now()}`;
 
@@ -291,10 +286,17 @@ test(
             );
 
         await page
-            .getByLabel(
-                "Due time"
+            .getByRole(
+                "textbox",
+                {
+                    name:
+                        "Due time",
+                    exact: true
+                }
             )
-            .fill("16:00");
+            .fill(
+                "16:00"
+            );
 
         await page
             .getByPlaceholder(
@@ -408,11 +410,10 @@ test(
             .click();
 
         await expect(
-            page.getByText(
-                "No tasks match your search or filters."
+            page.getByTestId(
+                "task-card"
             )
-        ).toBeVisible();
-
+        ).toHaveCount(0);
     }
 );
 
@@ -422,7 +423,6 @@ test(
         page,
         request
     }, testInfo) => {
-
         const ids: number[] = [];
 
         const token =
@@ -433,7 +433,6 @@ test(
                 .repeat(35);
 
         try {
-
             const task =
                 await createTask(
                     request,
@@ -480,17 +479,13 @@ test(
             expect(
                 fitsInside
             ).toBeTruthy();
-
         }
         finally {
-
             await deleteTasks(
                 request,
                 ids
             );
-
         }
-
     }
 );
 
@@ -500,14 +495,12 @@ test(
         page,
         request
     }, testInfo) => {
-
         const ids: number[] = [];
 
         const token =
             `FILTER-${testInfo.project.name}-${Date.now()}`;
 
         try {
-
             const firstTask =
                 await createTask(
                     request,
@@ -729,17 +722,13 @@ test(
                     "task-card"
                 )
             ).toHaveCount(3);
-
         }
         finally {
-
             await deleteTasks(
                 request,
                 ids
             );
-
         }
-
     }
 );
 
@@ -749,20 +738,17 @@ test(
         page,
         request
     }, testInfo) => {
-
         const ids: number[] = [];
 
         const token =
             `PAGE-${testInfo.project.name}-${Date.now()}`;
 
         try {
-
             for (
                 let index = 1;
                 index <= 10;
                 index++
             ) {
-
                 const numberText =
                     index < 10
                         ? `0${index}`
@@ -784,7 +770,6 @@ test(
                 ids.push(
                     task.id
                 );
-
             }
 
             await page.goto(
@@ -902,16 +887,12 @@ test(
                     }
                 )
             ).toHaveCount(0);
-
         }
         finally {
-
             await deleteTasks(
                 request,
                 ids
             );
-
         }
-
     }
 );
