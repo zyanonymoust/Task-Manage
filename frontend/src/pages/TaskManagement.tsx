@@ -395,7 +395,7 @@ function TimeInput({
                 aria-label={label}
                 type="text"
                 inputMode="text"
-                placeholder="Time, e.g. 20:00 or 08:00 PM"
+                placeholder="--:-- --, e.g. 20:00 or 08:00 PM"
                 maxLength={8}
                 autoComplete="off"
                 value={displayValue}
