@@ -37,6 +37,12 @@ pipeline {
             }
         }
 
+        stage('Deploy') {
+            steps {
+                bat '"C:\\Users\\Hp\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker-compose.exe" -p task-manage up -d --force-recreate --remove-orphans'
+            }
+        }
+
     }
 
     post {
