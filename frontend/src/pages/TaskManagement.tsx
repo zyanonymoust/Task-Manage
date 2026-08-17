@@ -226,12 +226,15 @@ function TaskManagement() {
 
         }
 
-        if (
-            taskDate < today
-        ) {
+        const selectedDateTime =
+            new Date(`${taskDate}T${taskTime}`);
+
+        const currentDateTime = new Date();
+
+        if (selectedDateTime < currentDateTime) {
 
             setError(
-                "Due date cannot be in the past."
+                "Due date and time cannot be in the past."
             );
 
             return false;
@@ -959,15 +962,15 @@ function TaskManagement() {
                             </option>
 
                             <option value="Low">
-                                Low Priority
+                                Low
                             </option>
 
                             <option value="Medium">
-                                Medium Priority
+                                Medium
                             </option>
 
                             <option value="High">
-                                High Priority
+                                High
                             </option>
 
                         </select>
