@@ -21,31 +21,83 @@ interface TaskItem {
     completedAt: string | null;
 }
 
-type SortField =
-    "created" |
-    "due" |
-    "updated";
+interface ThemeColors {
+    pageBackground: string;
+    cardBackground: string;
+    inputBackground: string;
+    textColor: string;
+    secondaryTextColor: string;
+    accentColor: string;
+    borderColor: string;
+}
 
-type SortDirection =
-    "asc" |
-    "desc";
+interface ParsedTime {
+    normalizedTime: string;
+    dayOffset: number;
+}
 
-type ViewMode =
-    "pagination" |
-    "all";
+interface TimeInputProps {
+    label: string;
+    value: string;
+    dateValue: string;
+    onChange: (value: string) => void;
+    onDateChange: (value: string) => void;
+    onError: (message: string) => void;
+}
+
+type SortField = "created" | "due" | "updated";
+type SortDirection = "asc" | "desc";
+type ViewMode = "pagination" | "all";
 
 const PAGE_SIZE = 9;
 
+const lightColors: ThemeColors = {
+    pageBackground: "#f3f4f6",
+    cardBackground: "#ffffff",
+    inputBackground: "#ffffff",
+    textColor: "#111827",
+    secondaryTextColor: "#6b7280",
+    accentColor: "#4f46e5",
+    borderColor: "#d1d5db"
+};
+
+const darkColors: ThemeColors = {
+    pageBackground: "#111827",
+    cardBackground: "#1f2937",
+    inputBackground: "#374151",
+    textColor: "#f9fafb",
+    secondaryTextColor: "#d1d5db",
+    accentColor: "#818cf8",
+    borderColor: "#4b5563"
+};
+
+function getSavedTheme(): ThemeColors {
+    try {
+        const savedTheme =
+            localStorage.getItem("task-management-theme");
+
+        if (!savedTheme) {
+            return lightColors;
+        }
+
+        const parsedTheme =
+            JSON.parse(savedTheme) as Partial<ThemeColors>;
+
+        return {
+            ...lightColors,
+            ...parsedTheme
+        };
+    }
+    catch {
+        return lightColors;
+    }
+}
+
 function getLocalDateString() {
-    const now =
-        new Date();
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60000;
 
-    const offset =
-        now.getTimezoneOffset() * 60000;
-
-    return new Date(
-        now.getTime() - offset
-    )
+    return new Date(now.getTime() - offset)
         .toISOString()
         .slice(0, 10);
 }
@@ -55,198 +107,103 @@ function addDays(
     numberOfDays: number
 ) {
     const [year, month, day] =
-        dateText
-            .split("-")
-            .map(Number);
+        dateText.split("-").map(Number);
 
-    const date =
-        new Date(
-            year,
-            month - 1,
-            day
-        );
+    const date = new Date(
+        year,
+        month - 1,
+        day
+    );
 
     date.setDate(
         date.getDate() + numberOfDays
     );
 
-    const newYear =
-        date.getFullYear();
+    const newYear = date.getFullYear();
 
     const newMonth =
-        String(
-            date.getMonth() + 1
-        ).padStart(2, "0");
+        String(date.getMonth() + 1)
+            .padStart(2, "0");
 
     const newDay =
-        String(
-            date.getDate()
-        ).padStart(2, "0");
+        String(date.getDate())
+            .padStart(2, "0");
 
-    return (
-        `${newYear}-${newMonth}-${newDay}`
-    );
+    return `${newYear}-${newMonth}-${newDay}`;
 }
 
-function formatTimeTo12Hour(
-    time: string
-) {
+function formatTimeTo12Hour(time: string) {
     const match =
-        time.match(
-            /^([01]\d|2[0-3]):([0-5]\d)/
-        );
+        time.match(/^([01]\d|2[0-3]):([0-5]\d)/);
 
     if (!match) {
         return time;
     }
 
-    const hour =
-        Number(match[1]);
+    const hour = Number(match[1]);
+    const minute = match[2];
+    const period = hour >= 12 ? "PM" : "AM";
+    const displayHour = hour % 12 || 12;
 
-    const minute =
-        match[2];
-
-    const period =
-        hour >= 12
-            ? "PM"
-            : "AM";
-
-    const displayHour =
-        hour % 12 || 12;
-
-    return (
-        `${String(displayHour)
-            .padStart(2, "0")}:${minute} ${period}`
-    );
-}
-
-interface ParsedTime {
-    normalizedTime: string;
-    dayOffset: number;
+    return `${String(displayHour).padStart(2, "0")}:${minute} ${period}`;
 }
 
 function parseManualTime(
     input: string
 ): ParsedTime | null {
     const value =
-        input
-            .trim()
-            .toUpperCase();
+        input.trim().toUpperCase();
 
-    /*
-     * Accept explicit 12-hour input:
-     * 08:00 PM
-     * 4:30 AM
-     */
     const twelveHourMatch =
         value.match(
             /^(0?[1-9]|1[0-2]):([0-5]\d)\s*(AM|PM)$/
         );
 
     if (twelveHourMatch) {
-        let hour =
-            Number(
-                twelveHourMatch[1]
-            );
+        let hour = Number(twelveHourMatch[1]);
+        const minute = twelveHourMatch[2];
+        const period = twelveHourMatch[3];
 
-        const minute =
-            twelveHourMatch[2];
-
-        const period =
-            twelveHourMatch[3];
-
-        if (
-            period === "AM" &&
-            hour === 12
-        ) {
+        if (period === "AM" && hour === 12) {
             hour = 0;
         }
 
-        if (
-            period === "PM" &&
-            hour !== 12
-        ) {
+        if (period === "PM" && hour !== 12) {
             hour += 12;
         }
 
         return {
             normalizedTime:
-                `${String(hour)
-                    .padStart(2, "0")}:${minute}`,
-
+                `${String(hour).padStart(2, "0")}:${minute}`,
             dayOffset: 0
         };
     }
 
-    /*
-     * Accept:
-     * 2:00
-     * 12:00
-     * 16:00
-     * 20:00
-     * 24:00
-     * 25:00
-     */
     const manualMatch =
-        value.match(
-            /^(\d{1,3}):([0-5]\d)$/
-        );
+        value.match(/^(\d{1,3}):([0-5]\d)$/);
 
     if (!manualMatch) {
         return null;
     }
 
-    const enteredHour =
-        Number(
-            manualMatch[1]
-        );
-
-    const minute =
-        manualMatch[2];
+    const enteredHour = Number(manualMatch[1]);
+    const minute = manualMatch[2];
 
     let normalizedHour: number;
     let dayOffset = 0;
 
-    if (
-        enteredHour <= 12
-    ) {
-        /*
-         * Requested rule:
-         * 0–12 automatically becomes AM.
-         *
-         * 2:00  → 02:00 AM
-         * 12:00 → 12:00 AM
-         */
+    if (enteredHour <= 12) {
         normalizedHour =
             enteredHour === 12
                 ? 0
                 : enteredHour;
     }
-    else if (
-        enteredHour < 24
-    ) {
-        /*
-         * 13–23 automatically becomes PM.
-         *
-         * 16:00 → 04:00 PM
-         * 20:00 → 08:00 PM
-         */
-        normalizedHour =
-            enteredHour;
+    else if (enteredHour < 24) {
+        normalizedHour = enteredHour;
     }
     else {
-        /*
-         * 24 hours or above advances
-         * the Due Date.
-         *
-         * 24:00 → next day 12:00 AM
-         * 25:00 → next day 01:00 AM
-         * 48:00 → two days later 12:00 AM
-         */
         dayOffset =
-            Math.floor(
-                enteredHour / 24
-            );
+            Math.floor(enteredHour / 24);
 
         normalizedHour =
             enteredHour % 24;
@@ -254,26 +211,9 @@ function parseManualTime(
 
     return {
         normalizedTime:
-            `${String(normalizedHour)
-                .padStart(2, "0")}:${minute}`,
-
+            `${String(normalizedHour).padStart(2, "0")}:${minute}`,
         dayOffset
     };
-}
-
-interface TimeInputProps {
-    label: string;
-    value: string;
-    dateValue: string;
-    onChange: (
-        value: string
-    ) => void;
-    onDateChange: (
-        value: string
-    ) => void;
-    onError: (
-        message: string
-    ) => void;
 }
 
 function TimeInput({
@@ -285,18 +225,14 @@ function TimeInput({
     onError
 }: TimeInputProps) {
     const pickerReference =
-        useRef<HTMLInputElement>(
-            null
-        );
+        useRef<HTMLInputElement>(null);
 
-    const [
-        displayValue,
-        setDisplayValue
-    ] = useState(
-        value
-            ? formatTimeTo12Hour(value)
-            : ""
-    );
+    const [displayValue, setDisplayValue] =
+        useState(
+            value
+                ? formatTimeTo12Hour(value)
+                : ""
+        );
 
     useEffect(() => {
         setDisplayValue(
@@ -306,13 +242,7 @@ function TimeInput({
         );
     }, [value]);
 
-    function handleManualInput(
-        input: string
-    ) {
-        /*
-         * Allow numbers, colon,
-         * spaces and AM/PM letters.
-         */
+    function handleManualInput(input: string) {
         if (
             !/^[0-9:aApPmM\s]*$/.test(input) ||
             input.length > 8
@@ -322,21 +252,20 @@ function TimeInput({
 
         setDisplayValue(input);
 
-        const parsed =
-            parseManualTime(input);
+        if (!input.trim()) {
+            onChange("");
+            onError("");
+            return;
+        }
 
-        /*
-         * A partly entered value such as
-         * "2" stays as "2".
-         */
+        const parsed = parseManualTime(input);
+
         if (!parsed) {
             onChange("");
             return;
         }
 
-        if (
-            parsed.dayOffset > 0
-        ) {
+        if (parsed.dayOffset > 0) {
             if (!dateValue) {
                 onChange("");
 
@@ -356,10 +285,7 @@ function TimeInput({
         }
 
         onError("");
-
-        onChange(
-            parsed.normalizedTime
-        );
+        onChange(parsed.normalizedTime);
 
         setDisplayValue(
             formatTimeTo12Hour(
@@ -385,12 +311,7 @@ function TimeInput({
     }
 
     return (
-        <div
-            style={{
-                position: "relative",
-                width: "100%"
-            }}
-        >
+        <div className="time-input-container">
             <input
                 aria-label={label}
                 type="text"
@@ -399,15 +320,8 @@ function TimeInput({
                 maxLength={8}
                 autoComplete="off"
                 value={displayValue}
-                style={{
-                    width: "100%",
-                    paddingRight: "52px",
-                    boxSizing: "border-box"
-                }}
                 onFocus={(event) =>
-                    event
-                        .currentTarget
-                        .select()
+                    event.currentTarget.select()
                 }
                 onChange={(event) =>
                     handleManualInput(
@@ -418,53 +332,28 @@ function TimeInput({
 
             <button
                 type="button"
+                className="time-picker-button"
                 aria-label={
-                    `Open ${label} picker`
+                    label === "Edit due time"
+                        ? "Open edit time picker"
+                        : "Open time picker"
                 }
                 title="Choose time"
                 onClick={openTimePicker}
-                style={{
-                    position: "absolute",
-                    top: "50%",
-                    right: "10px",
-                    width: "36px",
-                    height: "36px",
-                    padding: 0,
-                    border: "none",
-                    background: "transparent",
-                    color: "#111827",
-                    fontSize: "24px",
-                    cursor: "pointer",
-                    transform:
-                        "translateY(-50%)"
-                }}
             >
                 ◷
             </button>
 
             <input
                 ref={pickerReference}
+                className="hidden-time-picker"
                 type="time"
                 value={value}
                 tabIndex={-1}
                 aria-hidden="true"
                 onChange={(event) => {
                     onError("");
-
-                    onChange(
-                        event.target.value
-                    );
-                }}
-                style={{
-                    position: "absolute",
-                    right: "10px",
-                    bottom: 0,
-                    width: "1px",
-                    height: "1px",
-                    padding: 0,
-                    border: 0,
-                    opacity: 0,
-                    pointerEvents: "none"
+                    onChange(event.target.value);
                 }}
             />
         </div>
@@ -486,11 +375,10 @@ function formatApiError(
         data &&
         typeof data === "object"
     ) {
-        const problem =
-            data as {
-                detail?: string;
-                title?: string;
-            };
+        const problem = data as {
+            detail?: string;
+            title?: string;
+        };
 
         return (
             problem.detail ||
@@ -503,8 +391,7 @@ function formatApiError(
 }
 
 function TaskManagement() {
-    const today =
-        getLocalDateString();
+    const today = getLocalDateString();
 
     const [tasks, setTasks] =
         useState<TaskItem[]>([]);
@@ -536,73 +423,55 @@ function TaskManagement() {
     const [editTitle, setEditTitle] =
         useState("");
 
-    const [
-        editDescription,
-        setEditDescription
-    ] = useState("");
+    const [editDescription, setEditDescription] =
+        useState("");
 
     const [editStatus, setEditStatus] =
         useState("");
 
-    const [
-        editPriority,
-        setEditPriority
-    ] = useState("");
+    const [editPriority, setEditPriority] =
+        useState("");
 
-    const [
-        editDueDate,
-        setEditDueDate
-    ] = useState("");
+    const [editDueDate, setEditDueDate] =
+        useState("");
 
-    const [
-        editDueTime,
-        setEditDueTime
-    ] = useState("");
+    const [editDueTime, setEditDueTime] =
+        useState("");
 
-    const [
-        editRemark,
-        setEditRemark
-    ] = useState("");
+    const [editRemark, setEditRemark] =
+        useState("");
 
     const [searchText, setSearchText] =
         useState("");
 
-    const [
-        statusFilter,
-        setStatusFilter
-    ] = useState("All");
+    const [statusFilter, setStatusFilter] =
+        useState("All");
 
-    const [
-        priorityFilter,
-        setPriorityFilter
-    ] = useState("All");
+    const [priorityFilter, setPriorityFilter] =
+        useState("All");
 
-    const [
-        sortField,
-        setSortField
-    ] = useState<SortField>(
-        "created"
-    );
+    const [sortField, setSortField] =
+        useState<SortField>("created");
 
-    const [
-        sortDirection,
-        setSortDirection
-    ] = useState<SortDirection>(
-        "asc"
-    );
+    const [sortDirection, setSortDirection] =
+        useState<SortDirection>("asc");
 
     const [viewMode, setViewMode] =
-        useState<ViewMode>(
-            "pagination"
-        );
+        useState<ViewMode>("pagination");
 
-    const [
-        currentPage,
-        setCurrentPage
-    ] = useState(1);
+    const [currentPage, setCurrentPage] =
+        useState(1);
 
     const [error, setError] =
         useState("");
+
+    const [
+        showThemeSettings,
+        setShowThemeSettings
+    ] = useState(false);
+
+    const [colors, setColors] =
+        useState<ThemeColors>(getSavedTheme);
 
     useEffect(() => {
         loadTasks();
@@ -619,14 +488,93 @@ function TaskManagement() {
         viewMode
     ]);
 
+    useEffect(() => {
+        const root =
+            document.documentElement;
+
+        root.style.setProperty(
+            "--page-background",
+            colors.pageBackground
+        );
+
+        root.style.setProperty(
+            "--card-background",
+            colors.cardBackground
+        );
+
+        root.style.setProperty(
+            "--input-background",
+            colors.inputBackground
+        );
+
+        root.style.setProperty(
+            "--text-color",
+            colors.textColor
+        );
+
+        root.style.setProperty(
+            "--secondary-text-color",
+            colors.secondaryTextColor
+        );
+
+        root.style.setProperty(
+            "--accent-color",
+            colors.accentColor
+        );
+
+        root.style.setProperty(
+            "--border-color",
+            colors.borderColor
+        );
+
+        localStorage.setItem(
+            "task-management-theme",
+            JSON.stringify(colors)
+        );
+    }, [colors]);
+
+    useEffect(() => {
+        if (!showThemeSettings) {
+            return;
+        }
+
+        function closeWithEscape(
+            event: KeyboardEvent
+        ) {
+            if (event.key === "Escape") {
+                setShowThemeSettings(false);
+            }
+        }
+
+        document.addEventListener(
+            "keydown",
+            closeWithEscape
+        );
+
+        return () => {
+            document.removeEventListener(
+                "keydown",
+                closeWithEscape
+            );
+        };
+    }, [showThemeSettings]);
+
+    function updateColor(
+        property: keyof ThemeColors,
+        value: string
+    ) {
+        setColors((currentColors) => ({
+            ...currentColors,
+            [property]: value
+        }));
+    }
+
     async function loadTasks() {
         try {
             setError("");
 
             const response =
-                await fetch(
-                    "/api/tasks"
-                );
+                await fetch("/api/tasks");
 
             if (!response.ok) {
                 setError(
@@ -668,11 +616,7 @@ function TaskManagement() {
         const validTimePattern =
             /^([01]\d|2[0-3]):[0-5]\d$/;
 
-        if (
-            !validTimePattern.test(
-                taskTime
-            )
-        ) {
+        if (!validTimePattern.test(taskTime)) {
             setError(
                 "Please enter or select a valid due time."
             );
@@ -685,13 +629,19 @@ function TaskManagement() {
                 `${taskDate}T${taskTime}:00`
             );
 
-        const currentDateTime =
-            new Date();
-
         if (
-            selectedDateTime <=
-            currentDateTime
+            Number.isNaN(
+                selectedDateTime.getTime()
+            )
         ) {
+            setError(
+                "Please enter a valid due date and time."
+            );
+
+            return false;
+        }
+
+        if (selectedDateTime <= new Date()) {
             setError(
                 "Due date and time must be in the future."
             );
@@ -739,16 +689,12 @@ function TaskManagement() {
                     "/api/tasks",
                     {
                         method: "POST",
-
                         headers: {
                             "Content-Type":
                                 "application/json"
                         },
-
                         body: JSON.stringify({
-                            title:
-                                title.trim(),
-
+                            title: title.trim(),
                             description,
                             status,
                             priority,
@@ -787,44 +733,19 @@ function TaskManagement() {
         }
     }
 
-    function startEdit(
-        task: TaskItem
-    ) {
-        setEditingId(
-            task.id
-        );
-
-        setEditTitle(
-            task.title
-        );
-
+    function startEdit(task: TaskItem) {
+        setEditingId(task.id);
+        setEditTitle(task.title);
         setEditDescription(
-            task.description
+            task.description ?? ""
         );
-
-        setEditStatus(
-            task.status
-        );
-
-        setEditPriority(
-            task.priority
-        );
-
-        setEditDueDate(
-            task.dueDate
-        );
-
+        setEditStatus(task.status);
+        setEditPriority(task.priority);
+        setEditDueDate(task.dueDate);
         setEditDueTime(
-            task.dueTime.slice(
-                0,
-                5
-            )
+            task.dueTime.slice(0, 5)
         );
-
-        setEditRemark(
-            task.remark
-        );
-
+        setEditRemark(task.remark ?? "");
         setError("");
     }
 
@@ -833,9 +754,7 @@ function TaskManagement() {
         setError("");
     }
 
-    async function saveTask(
-        id: number
-    ) {
+    async function saveTask(id: number) {
         if (
             !validateTask(
                 editTitle,
@@ -854,33 +773,23 @@ function TaskManagement() {
                     `/api/tasks/${id}`,
                     {
                         method: "PUT",
-
                         headers: {
                             "Content-Type":
                                 "application/json"
                         },
-
                         body: JSON.stringify({
                             id,
-
-                            title:
-                                editTitle.trim(),
-
+                            title: editTitle.trim(),
                             description:
                                 editDescription,
-
                             status:
                                 editStatus,
-
                             priority:
                                 editPriority,
-
                             dueDate:
                                 editDueDate,
-
                             dueTime:
                                 editDueTime,
-
                             remark:
                                 editRemark
                         })
@@ -899,7 +808,6 @@ function TaskManagement() {
             }
 
             setEditingId(null);
-
             await loadTasks();
         }
         catch {
@@ -909,9 +817,7 @@ function TaskManagement() {
         }
     }
 
-    async function deleteTask(
-        id: number
-    ) {
+    async function deleteTask(id: number) {
         try {
             setError("");
 
@@ -925,10 +831,17 @@ function TaskManagement() {
 
             if (!response.ok) {
                 setError(
-                    `Failed to delete task. Status: ${response.status}`
+                    await readFailure(
+                        response,
+                        `Failed to delete task. Status: ${response.status}`
+                    )
                 );
 
                 return;
+            }
+
+            if (editingId === id) {
+                setEditingId(null);
             }
 
             await loadTasks();
@@ -947,17 +860,26 @@ function TaskManagement() {
                     .trim()
                     .toLowerCase();
 
-            return tasks
+            return [...tasks]
                 .filter((task) => {
+                    const taskTitle =
+                        task.title ?? "";
+
+                    const taskDescription =
+                        task.description ?? "";
+
+                    const taskRemark =
+                        task.remark ?? "";
+
                     const matchesSearch =
                         query === "" ||
-                        task.title
+                        taskTitle
                             .toLowerCase()
                             .includes(query) ||
-                        task.description
+                        taskDescription
                             .toLowerCase()
                             .includes(query) ||
-                        task.remark
+                        taskRemark
                             .toLowerCase()
                             .includes(query);
 
@@ -981,12 +903,10 @@ function TaskManagement() {
                     firstTask,
                     secondTask
                 ) => {
-                    let firstValue = "";
-                    let secondValue = "";
+                    let firstValue: string;
+                    let secondValue: string;
 
-                    if (
-                        sortField === "due"
-                    ) {
+                    if (sortField === "due") {
                         firstValue =
                             `${firstTask.dueDate}T${firstTask.dueTime}`;
 
@@ -994,8 +914,7 @@ function TaskManagement() {
                             `${secondTask.dueDate}T${secondTask.dueTime}`;
                     }
                     else if (
-                        sortField ===
-                        "updated"
+                        sortField === "updated"
                     ) {
                         firstValue =
                             firstTask.updatedAt ||
@@ -1018,11 +937,9 @@ function TaskManagement() {
                             secondValue
                         );
 
-                    return (
-                        sortDirection === "asc"
-                            ? comparison
-                            : -comparison
-                    );
+                    return sortDirection === "asc"
+                        ? comparison
+                        : -comparison;
                 });
         }, [
             tasks,
@@ -1052,21 +969,13 @@ function TaskManagement() {
         viewMode === "all"
             ? filteredTasks
             : filteredTasks.slice(
-                (safePage - 1) *
-                PAGE_SIZE,
-
-                safePage *
-                PAGE_SIZE
+                (safePage - 1) * PAGE_SIZE,
+                safePage * PAGE_SIZE
             );
 
     useEffect(() => {
-        if (
-            currentPage >
-            totalPages
-        ) {
-            setCurrentPage(
-                totalPages
-            );
+        if (currentPage > totalPages) {
+            setCurrentPage(totalPages);
         }
     }, [
         currentPage,
@@ -1075,15 +984,233 @@ function TaskManagement() {
 
     return (
         <div className="task-page">
-            <div className="task-title">
-                <h1>
-                    Task Management
-                </h1>
+            <div className="task-header">
+                <div className="task-title">
+                    <h1>
+                        Task Management
+                    </h1>
 
-                <p>
-                    Manage your daily tasks and deadlines.
-                </p>
+                    <p>
+                        Manage your daily tasks and deadlines.
+                    </p>
+                </div>
+
+                <button
+                    type="button"
+                    className="open-theme-button"
+                    onClick={() =>
+                        setShowThemeSettings(true)
+                    }
+                >
+                    🎨 Customize Theme
+                </button>
             </div>
+
+            {showThemeSettings && (
+                <div
+                    className="theme-overlay"
+                    onClick={() =>
+                        setShowThemeSettings(false)
+                    }
+                >
+                    <aside
+                        className="theme-drawer"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label="Theme settings"
+                        onClick={(event) =>
+                            event.stopPropagation()
+                        }
+                    >
+                        <div className="theme-drawer-header">
+                            <div>
+                                <h2>
+                                    Theme Settings
+                                </h2>
+
+                                <p>
+                                    Customize the page appearance.
+                                </p>
+                            </div>
+
+                            <button
+                                type="button"
+                                className="close-theme-button"
+                                aria-label="Close theme settings"
+                                onClick={() =>
+                                    setShowThemeSettings(false)
+                                }
+                            >
+                                ×
+                            </button>
+                        </div>
+
+                        <div className="theme-preset-buttons">
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    setColors(lightColors)
+                                }
+                            >
+                                ☀️ Light
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    setColors(darkColors)
+                                }
+                            >
+                                🌙 Dark
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    setColors(lightColors)
+                                }
+                            >
+                                ↺ Reset
+                            </button>
+                        </div>
+
+                        <div className="theme-color-list">
+                            <label>
+                                <span>
+                                    Page Background
+                                </span>
+
+                                <input
+                                    type="color"
+                                    value={
+                                        colors.pageBackground
+                                    }
+                                    onChange={(event) =>
+                                        updateColor(
+                                            "pageBackground",
+                                            event.target.value
+                                        )
+                                    }
+                                />
+                            </label>
+
+                            <label>
+                                <span>
+                                    Card Background
+                                </span>
+
+                                <input
+                                    type="color"
+                                    value={
+                                        colors.cardBackground
+                                    }
+                                    onChange={(event) =>
+                                        updateColor(
+                                            "cardBackground",
+                                            event.target.value
+                                        )
+                                    }
+                                />
+                            </label>
+
+                            <label>
+                                <span>
+                                    Input Background
+                                </span>
+
+                                <input
+                                    type="color"
+                                    value={
+                                        colors.inputBackground
+                                    }
+                                    onChange={(event) =>
+                                        updateColor(
+                                            "inputBackground",
+                                            event.target.value
+                                        )
+                                    }
+                                />
+                            </label>
+
+                            <label>
+                                <span>
+                                    Main Word Color
+                                </span>
+
+                                <input
+                                    type="color"
+                                    value={
+                                        colors.textColor
+                                    }
+                                    onChange={(event) =>
+                                        updateColor(
+                                            "textColor",
+                                            event.target.value
+                                        )
+                                    }
+                                />
+                            </label>
+
+                            <label>
+                                <span>
+                                    Secondary Word Color
+                                </span>
+
+                                <input
+                                    type="color"
+                                    value={
+                                        colors.secondaryTextColor
+                                    }
+                                    onChange={(event) =>
+                                        updateColor(
+                                            "secondaryTextColor",
+                                            event.target.value
+                                        )
+                                    }
+                                />
+                            </label>
+
+                            <label>
+                                <span>
+                                    Button Color
+                                </span>
+
+                                <input
+                                    type="color"
+                                    value={
+                                        colors.accentColor
+                                    }
+                                    onChange={(event) =>
+                                        updateColor(
+                                            "accentColor",
+                                            event.target.value
+                                        )
+                                    }
+                                />
+                            </label>
+
+                            <label>
+                                <span>
+                                    Border Color
+                                </span>
+
+                                <input
+                                    type="color"
+                                    value={
+                                        colors.borderColor
+                                    }
+                                    onChange={(event) =>
+                                        updateColor(
+                                            "borderColor",
+                                            event.target.value
+                                        )
+                                    }
+                                />
+                            </label>
+                        </div>
+                    </aside>
+                </div>
+            )}
 
             {error && (
                 <div
@@ -1102,6 +1229,7 @@ function TaskManagement() {
                 <div className="task-form-grid">
                     <div className="full-width">
                         <input
+                            aria-label="Task title"
                             type="text"
                             placeholder="Task title"
                             value={title}
@@ -1115,6 +1243,7 @@ function TaskManagement() {
 
                     <div className="full-width">
                         <textarea
+                            aria-label="Description"
                             placeholder="Description"
                             value={description}
                             onChange={(event) =>
@@ -1187,21 +1316,18 @@ function TaskManagement() {
                         />
                     </div>
 
-                    <div>
-                        <TimeInput
-                            label="Due time"
-                            value={dueTime}
-                            dateValue={dueDate}
-                            onChange={setDueTime}
-                            onDateChange={
-                                setDueDate
-                            }
-                            onError={setError}
-                        />
-                    </div>
+                    <TimeInput
+                        label="Due time"
+                        value={dueTime}
+                        dateValue={dueDate}
+                        onChange={setDueTime}
+                        onDateChange={setDueDate}
+                        onError={setError}
+                    />
 
                     <div className="full-width">
                         <textarea
+                            aria-label="Remark"
                             placeholder="Remark / Note"
                             value={remark}
                             onChange={(event) =>
@@ -1214,6 +1340,7 @@ function TaskManagement() {
                 </div>
 
                 <button
+                    type="button"
                     className="add-button"
                     onClick={addTask}
                 >
@@ -1230,7 +1357,6 @@ function TaskManagement() {
 
                         <span className="result-count">
                             {filteredTasks.length}{" "}
-
                             {filteredTasks.length === 1
                                 ? "task"
                                 : "tasks"}
@@ -1413,252 +1539,245 @@ function TaskManagement() {
                         className="task-grid"
                         data-testid="task-grid"
                     >
-                        {visibleTasks.map(
-                            (task) => (
-                                <div
-                                    key={task.id}
-                                    data-testid="task-card"
-                                    className={
-                                        task.status === "Completed"
-                                            ? "task-card completed"
-                                            : "task-card"
-                                    }
-                                >
-                                    {editingId === task.id ? (
-                                        <div className="edit-form">
-                                            <input
-                                                aria-label="Edit title"
-                                                type="text"
-                                                value={editTitle}
-                                                onChange={(event) =>
-                                                    setEditTitle(
-                                                        event.target.value
-                                                    )
-                                                }
-                                            />
+                        {visibleTasks.map((task) => (
+                            <div
+                                key={task.id}
+                                data-testid="task-card"
+                                className={
+                                    task.status ===
+                                        "Completed"
+                                        ? "task-card completed"
+                                        : "task-card"
+                                }
+                            >
+                                {editingId === task.id ? (
+                                    <div className="edit-form">
+                                        <input
+                                            aria-label="Edit title"
+                                            type="text"
+                                            value={editTitle}
+                                            onChange={(event) =>
+                                                setEditTitle(
+                                                    event.target.value
+                                                )
+                                            }
+                                        />
 
-                                            <textarea
-                                                aria-label="Edit description"
-                                                value={editDescription}
-                                                onChange={(event) =>
-                                                    setEditDescription(
-                                                        event.target.value
-                                                    )
-                                                }
-                                            />
+                                        <textarea
+                                            aria-label="Edit description"
+                                            value={editDescription}
+                                            onChange={(event) =>
+                                                setEditDescription(
+                                                    event.target.value
+                                                )
+                                            }
+                                        />
 
-                                            <select
-                                                aria-label="Edit status"
-                                                value={editStatus}
-                                                onChange={(event) =>
-                                                    setEditStatus(
-                                                        event.target.value
+                                        <select
+                                            aria-label="Edit status"
+                                            value={editStatus}
+                                            onChange={(event) =>
+                                                setEditStatus(
+                                                    event.target.value
+                                                )
+                                            }
+                                        >
+                                            <option value="Pending">
+                                                Pending
+                                            </option>
+
+                                            <option value="In Progress">
+                                                In Progress
+                                            </option>
+
+                                            <option value="Completed">
+                                                Completed
+                                            </option>
+                                        </select>
+
+                                        <select
+                                            aria-label="Edit priority"
+                                            value={editPriority}
+                                            onChange={(event) =>
+                                                setEditPriority(
+                                                    event.target.value
+                                                )
+                                            }
+                                        >
+                                            <option value="Low">
+                                                Low
+                                            </option>
+
+                                            <option value="Medium">
+                                                Medium
+                                            </option>
+
+                                            <option value="High">
+                                                High
+                                            </option>
+                                        </select>
+
+                                        <input
+                                            aria-label="Edit due date"
+                                            type="date"
+                                            min={today}
+                                            value={editDueDate}
+                                            onChange={(event) =>
+                                                setEditDueDate(
+                                                    event.target.value
+                                                )
+                                            }
+                                        />
+
+                                        <TimeInput
+                                            label="Edit due time"
+                                            value={editDueTime}
+                                            dateValue={editDueDate}
+                                            onChange={setEditDueTime}
+                                            onDateChange={
+                                                setEditDueDate
+                                            }
+                                            onError={setError}
+                                        />
+
+                                        <textarea
+                                            aria-label="Edit remark"
+                                            placeholder="Remark / Note"
+                                            value={editRemark}
+                                            onChange={(event) =>
+                                                setEditRemark(
+                                                    event.target.value
+                                                )
+                                            }
+                                        />
+
+                                        <div className="task-actions">
+                                            <button
+                                                type="button"
+                                                className="save-button"
+                                                onClick={() =>
+                                                    saveTask(
+                                                        task.id
                                                     )
                                                 }
                                             >
-                                                <option value="Pending">
-                                                    Pending
-                                                </option>
+                                                Save
+                                            </button>
 
-                                                <option value="In Progress">
-                                                    In Progress
-                                                </option>
-
-                                                <option value="Completed">
-                                                    Completed
-                                                </option>
-                                            </select>
-
-                                            <select
-                                                aria-label="Edit priority"
-                                                value={editPriority}
-                                                onChange={(event) =>
-                                                    setEditPriority(
-                                                        event.target.value
-                                                    )
-                                                }
+                                            <button
+                                                type="button"
+                                                className="cancel-button"
+                                                onClick={cancelEdit}
                                             >
-                                                <option value="Low">
-                                                    Low
-                                                </option>
-
-                                                <option value="Medium">
-                                                    Medium
-                                                </option>
-
-                                                <option value="High">
-                                                    High
-                                                </option>
-                                            </select>
-
-                                            <input
-                                                aria-label="Edit due date"
-                                                type="date"
-                                                min={today}
-                                                value={editDueDate}
-                                                onChange={(event) =>
-                                                    setEditDueDate(
-                                                        event.target.value
-                                                    )
-                                                }
-                                            />
-
-                                            <TimeInput
-                                                label="Edit due time"
-                                                value={editDueTime}
-                                                dateValue={editDueDate}
-                                                onChange={setEditDueTime}
-                                                onDateChange={
-                                                    setEditDueDate
-                                                }
-                                                onError={setError}
-                                            />
-
-                                            <textarea
-                                                aria-label="Edit remark"
-                                                placeholder="Remark / Note"
-                                                value={editRemark}
-                                                onChange={(event) =>
-                                                    setEditRemark(
-                                                        event.target.value
-                                                    )
-                                                }
-                                            />
-
-                                            <div className="task-actions">
-                                                <button
-                                                    className="save-button"
-                                                    onClick={() =>
-                                                        saveTask(
-                                                            task.id
-                                                        )
-                                                    }
-                                                >
-                                                    Save
-                                                </button>
-
-                                                <button
-                                                    className="cancel-button"
-                                                    onClick={cancelEdit}
-                                                >
-                                                    Cancel
-                                                </button>
-                                            </div>
+                                                Cancel
+                                            </button>
                                         </div>
-                                    ) : (
-                                        <>
-                                            <h3>
-                                                {task.title}
-                                            </h3>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <h3>
+                                            {task.title}
+                                        </h3>
 
-                                            <p className="task-description">
-                                                {task.description ||
-                                                    "No description"}
-                                            </p>
+                                        <p className="task-description">
+                                            {task.description ||
+                                                "No description"}
+                                        </p>
 
-                                            <p className="task-info">
-                                                <strong>
-                                                    Status:
-                                                </strong>{" "}
+                                        <p className="task-info">
+                                            <strong>
+                                                Status:
+                                            </strong>{" "}
+                                            {task.status}
+                                        </p>
 
-                                                {task.status}
-                                            </p>
+                                        <p className="task-info">
+                                            <strong>
+                                                Priority:
+                                            </strong>{" "}
+                                            {task.priority}
+                                        </p>
 
-                                            <p className="task-info">
-                                                <strong>
-                                                    Priority:
-                                                </strong>{" "}
-
-                                                {task.priority}
-                                            </p>
-
-                                            <p className="task-info">
-                                                <strong>
-                                                    Due:
-                                                </strong>{" "}
-
-                                                {task.dueDate}{" "}
-
-                                                {formatTimeTo12Hour(
-                                                    task.dueTime.slice(
-                                                        0,
-                                                        5
-                                                    )
-                                                )}
-                                            </p>
-
-                                            {task.remark && (
-                                                <p className="task-info">
-                                                    <strong>
-                                                        Remark:
-                                                    </strong>{" "}
-
-                                                    {task.remark}
-                                                </p>
+                                        <p className="task-info">
+                                            <strong>
+                                                Due:
+                                            </strong>{" "}
+                                            {task.dueDate}{" "}
+                                            {formatTimeTo12Hour(
+                                                task.dueTime.slice(
+                                                    0,
+                                                    5
+                                                )
                                             )}
+                                        </p>
 
+                                        {task.remark && (
                                             <p className="task-info">
                                                 <strong>
-                                                    Task Created:
+                                                    Remark:
                                                 </strong>{" "}
+                                                {task.remark}
+                                            </p>
+                                        )}
 
+                                        <p className="task-info">
+                                            <strong>
+                                                Task Created:
+                                            </strong>{" "}
+                                            {new Date(
+                                                task.createdAt
+                                            ).toLocaleString()}
+                                        </p>
+
+                                        {task.updatedAt && (
+                                            <p className="task-info">
+                                                <strong>
+                                                    Last Updated:
+                                                </strong>{" "}
                                                 {new Date(
-                                                    task.createdAt
+                                                    task.updatedAt
                                                 ).toLocaleString()}
                                             </p>
+                                        )}
 
-                                            {task.updatedAt && (
-                                                <p className="task-info">
-                                                    <strong>
-                                                        Last Updated:
-                                                    </strong>{" "}
+                                        {task.completedAt && (
+                                            <p className="task-info">
+                                                <strong>
+                                                    Completed:
+                                                </strong>{" "}
+                                                {new Date(
+                                                    task.completedAt
+                                                ).toLocaleString()}
+                                            </p>
+                                        )}
 
-                                                    {new Date(
-                                                        task.updatedAt
-                                                    ).toLocaleString()}
-                                                </p>
-                                            )}
+                                        <div className="task-actions">
+                                            <button
+                                                type="button"
+                                                className="edit-button"
+                                                onClick={() =>
+                                                    startEdit(task)
+                                                }
+                                            >
+                                                Edit
+                                            </button>
 
-                                            {task.completedAt && (
-                                                <p className="task-info">
-                                                    <strong>
-                                                        Completed:
-                                                    </strong>{" "}
-
-                                                    {new Date(
-                                                        task.completedAt
-                                                    ).toLocaleString()}
-                                                </p>
-                                            )}
-
-                                            <div className="task-actions">
-                                                <button
-                                                    className="edit-button"
-                                                    onClick={() =>
-                                                        startEdit(
-                                                            task
-                                                        )
-                                                    }
-                                                >
-                                                    Edit
-                                                </button>
-
-                                                <button
-                                                    className="delete-button"
-                                                    onClick={() =>
-                                                        deleteTask(
-                                                            task.id
-                                                        )
-                                                    }
-                                                >
-                                                    Delete
-                                                </button>
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                            )
-                        )}
+                                            <button
+                                                type="button"
+                                                className="delete-button"
+                                                onClick={() =>
+                                                    deleteTask(
+                                                        task.id
+                                                    )
+                                                }
+                                            >
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        ))}
                     </div>
                 )}
 
@@ -1669,9 +1788,8 @@ function TaskManagement() {
                             aria-label="Task pagination"
                         >
                             <button
-                                disabled={
-                                    safePage === 1
-                                }
+                                type="button"
+                                disabled={safePage === 1}
                                 onClick={() =>
                                     setCurrentPage(
                                         (page) =>
@@ -1687,44 +1805,40 @@ function TaskManagement() {
 
                             {Array.from(
                                 {
-                                    length:
-                                        totalPages
+                                    length: totalPages
                                 },
                                 (_, index) =>
                                     index + 1
-                            ).map(
-                                (pageNumber) => (
-                                    <button
-                                        key={
+                            ).map((pageNumber) => (
+                                <button
+                                    type="button"
+                                    key={pageNumber}
+                                    className={
+                                        pageNumber ===
+                                            safePage
+                                            ? "active"
+                                            : ""
+                                    }
+                                    aria-current={
+                                        pageNumber ===
+                                            safePage
+                                            ? "page"
+                                            : undefined
+                                    }
+                                    onClick={() =>
+                                        setCurrentPage(
                                             pageNumber
-                                        }
-                                        className={
-                                            safePage ===
-                                                pageNumber
-                                                ? "active"
-                                                : ""
-                                        }
-                                        aria-current={
-                                            safePage ===
-                                                pageNumber
-                                                ? "page"
-                                                : undefined
-                                        }
-                                        onClick={() =>
-                                            setCurrentPage(
-                                                pageNumber
-                                            )
-                                        }
-                                    >
-                                        {pageNumber}
-                                    </button>
-                                )
-                            )}
+                                        )
+                                    }
+                                >
+                                    {pageNumber}
+                                </button>
+                            ))}
 
                             <button
+                                type="button"
                                 disabled={
-                                    safePage ===
-                                    totalPages
+                                    safePage === totalPages
                                 }
                                 onClick={() =>
                                     setCurrentPage(
