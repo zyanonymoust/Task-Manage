@@ -1,14 +1,16 @@
 import {
     test,
     expect,
-    type APIRequestContext
+    type APIRequestContext,
+    type Page
 } from "@playwright/test";
 
 const BASE_URL =
     "http://localhost:3001";
 
-interface CreatedTask {
+interface TaskData {
     id: number;
+    title: string;
 }
 
 function localDate(
@@ -27,11 +29,60 @@ function localDate(
         60000;
 
     return new Date(
-        date.getTime() -
-        offset
+        date.getTime() - offset
     )
         .toISOString()
         .slice(0, 10);
+}
+
+async function openApplication(
+    page: Page
+) {
+    let lastError:
+        unknown =
+        new Error(
+            "Application did not start."
+        );
+
+    for (
+        let attempt = 1;
+        attempt <= 6;
+        attempt++
+    ) {
+        try {
+            await page.goto(
+                BASE_URL,
+                {
+                    waitUntil:
+                        "domcontentloaded",
+                    timeout: 15000
+                }
+            );
+
+            await expect(
+                page.getByRole(
+                    "heading",
+                    {
+                        name:
+                            "Task Management"
+                    }
+                )
+            ).toBeVisible({
+                timeout: 10000
+            });
+
+            return;
+        }
+        catch (error) {
+            lastError = error;
+
+            await page.waitForTimeout(
+                2000
+            );
+        }
+    }
+
+    throw lastError;
 }
 
 async function createTask(
@@ -67,7 +118,7 @@ async function createTask(
         response.ok()
     ).toBeTruthy();
 
-    const data: CreatedTask =
+    const data: TaskData =
         await response.json();
 
     return data;
@@ -77,11 +128,40 @@ async function deleteTasks(
     request: APIRequestContext,
     ids: number[]
 ) {
-    for (
-        const id of ids
-    ) {
+    for (const id of ids) {
         await request.delete(
             `${BASE_URL}/api/tasks/${id}`
+        );
+    }
+}
+
+async function deleteTasksByToken(
+    request: APIRequestContext,
+    token: string
+) {
+    const response =
+        await request.get(
+            `${BASE_URL}/api/tasks`
+        );
+
+    if (!response.ok()) {
+        return;
+    }
+
+    const tasks: TaskData[] =
+        await response.json();
+
+    const matchingTasks =
+        tasks.filter(
+            (task) =>
+                task.title.includes(token)
+        );
+
+    for (
+        const task of matchingTasks
+    ) {
+        await request.delete(
+            `${BASE_URL}/api/tasks/${task.id}`
         );
     }
 }
@@ -89,19 +169,7 @@ async function deleteTasks(
 test(
     "Task Management page should load",
     async ({ page }) => {
-        await page.goto(
-            BASE_URL
-        );
-
-        await expect(
-            page.getByRole(
-                "heading",
-                {
-                    name:
-                        "Task Management"
-                }
-            )
-        ).toBeVisible();
+        await openApplication(page);
 
         await expect(
             page.getByLabel(
@@ -149,9 +217,7 @@ test(
         page,
         request
     }) => {
-        await page.goto(
-            BASE_URL
-        );
+        await openApplication(page);
 
         const dueDate =
             page.getByLabel(
@@ -233,8 +299,9 @@ test(
             response.status()
         ).toBe(400);
 
-        const result =
-            await response.json();
+        const result: {
+            detail?: string;
+        } = await response.json();
 
         expect(
             result.detail
@@ -246,174 +313,190 @@ test(
 
 test(
     "User should be able to add update and delete a task",
-    async (
-        { page },
-        testInfo
-    ) => {
+    async ({
+        page,
+        request
+    }, testInfo) => {
         const token =
             `CRUD-${testInfo.project.name}-${Date.now()}`;
 
         const updatedTitle =
             `Updated-${token}`;
 
-        await page.goto(
-            BASE_URL
-        );
+        try {
+            await openApplication(page);
 
-        await page
-            .getByPlaceholder(
-                "Task title"
-            )
-            .fill(token);
+            await page
+                .getByPlaceholder(
+                    "Task title"
+                )
+                .fill(token);
 
-        await page
-            .getByPlaceholder(
-                "Description",
-                {
-                    exact: true
-                }
-            )
-            .fill(
-                "Task for CRUD testing"
-            );
+            await page
+                .getByPlaceholder(
+                    "Description",
+                    {
+                        exact: true
+                    }
+                )
+                .fill(
+                    "Task for CRUD testing"
+                );
 
-        await page
-            .getByLabel(
-                "Due date"
-            )
-            .fill(
-                localDate(5)
-            );
+            await page
+                .getByLabel(
+                    "Due date"
+                )
+                .fill(
+                    localDate(5)
+                );
 
-        await page
-            .getByRole(
-                "textbox",
-                {
-                    name:
-                        "Due time",
-                    exact: true
-                }
-            )
-            .fill(
-                "16:00"
-            );
+            await page
+                .getByRole(
+                    "textbox",
+                    {
+                        name:
+                            "Due time",
+                        exact: true
+                    }
+                )
+                .fill(
+                    "16:00"
+                );
 
-        await page
-            .getByPlaceholder(
-                "Remark / Note"
-            )
-            .fill(
-                "Original remark"
-            );
+            await page
+                .getByPlaceholder(
+                    "Remark / Note"
+                )
+                .fill(
+                    "Original remark"
+                );
 
-        await page
-            .getByRole(
-                "button",
-                {
-                    name:
-                        "Add Task"
-                }
-            )
-            .click();
+            await page
+                .getByRole(
+                    "button",
+                    {
+                        name:
+                            "Add Task"
+                    }
+                )
+                .click();
 
-        await page
-            .getByLabel(
-                "Search tasks"
-            )
-            .fill(token);
+            await page
+                .getByLabel(
+                    "Search tasks"
+                )
+                .fill(token);
 
-        const taskCard =
-            page.getByTestId(
-                "task-card"
-            );
+            const taskCard =
+                page.getByTestId(
+                    "task-card"
+                );
 
-        await expect(
-            taskCard.getByRole(
-                "heading",
-                {
-                    name: token
-                }
-            )
-        ).toBeVisible();
+            await expect(
+                taskCard
+            ).toHaveCount(1);
 
-        await taskCard
-            .getByRole(
-                "button",
-                {
-                    name: "Edit"
-                }
-            )
-            .click();
+            await expect(
+                taskCard.getByRole(
+                    "heading",
+                    {
+                        name: token
+                    }
+                )
+            ).toBeVisible();
 
-        await page
-            .getByLabel(
-                "Edit title"
-            )
-            .fill(
-                updatedTitle
-            );
+            await taskCard
+                .getByRole(
+                    "button",
+                    {
+                        name: "Edit"
+                    }
+                )
+                .click();
 
-        await page
-            .getByLabel(
-                "Edit status"
-            )
-            .selectOption(
+            await page
+                .getByLabel(
+                    "Edit title"
+                )
+                .fill(
+                    updatedTitle
+                );
+
+            await page
+                .getByLabel(
+                    "Edit status"
+                )
+                .selectOption(
+                    "In Progress"
+                );
+
+            await page
+                .getByLabel(
+                    "Edit priority"
+                )
+                .selectOption(
+                    "High"
+                );
+
+            await page
+                .getByRole(
+                    "button",
+                    {
+                        name: "Save"
+                    }
+                )
+                .click();
+
+            await expect(
+                taskCard.getByRole(
+                    "heading",
+                    {
+                        name:
+                            updatedTitle
+                    }
+                )
+            ).toBeVisible();
+
+            await expect(
+                taskCard
+            ).toContainText(
                 "In Progress"
             );
 
-        await page
-            .getByLabel(
-                "Edit priority"
-            )
-            .selectOption(
+            await expect(
+                taskCard
+            ).toContainText(
                 "High"
             );
 
-        await page
-            .getByRole(
-                "button",
-                {
-                    name: "Save"
-                }
-            )
-            .click();
+            await taskCard
+                .getByRole(
+                    "button",
+                    {
+                        name:
+                            "Delete"
+                    }
+                )
+                .click();
 
-        await expect(
-            taskCard.getByRole(
-                "heading",
-                {
-                    name:
-                        updatedTitle
-                }
-            )
-        ).toBeVisible();
+            await expect(
+                page.getByTestId(
+                    "task-card"
+                )
+            ).toHaveCount(0);
+        }
+        finally {
+            await deleteTasksByToken(
+                request,
+                token
+            );
 
-        await expect(
-            taskCard
-        ).toContainText(
-            "In Progress"
-        );
-
-        await expect(
-            taskCard
-        ).toContainText(
-            "High"
-        );
-
-        await taskCard
-            .getByRole(
-                "button",
-                {
-                    name: "Delete"
-                }
-            )
-            .click();
-
-        await expect(
-            page.getByTestId(
-                "task-card"
-            )
-        ).toHaveCount(0);
+            await deleteTasksByToken(
+                request,
+                updatedTitle
+            );
+        }
     }
 );
 
@@ -450,9 +533,7 @@ test(
                 task.id
             );
 
-            await page.goto(
-                BASE_URL
-            );
+            await openApplication(page);
 
             await page
                 .getByLabel(
@@ -464,6 +545,10 @@ test(
                 page.getByTestId(
                     "task-card"
                 );
+
+            await expect(
+                card
+            ).toHaveCount(1);
 
             await expect(
                 card
@@ -508,7 +593,7 @@ test(
                         title:
                             `${token}-Alpha`,
                         description:
-                            "unique-description-search",
+                            `${token}-description-search`,
                         remark: "",
                         status:
                             "Pending",
@@ -533,7 +618,7 @@ test(
                             `${token}-Beta`,
                         description: "",
                         remark:
-                            "unique-remark-search",
+                            `${token}-remark-search`,
                         status:
                             "In Progress",
                         priority:
@@ -570,16 +655,14 @@ test(
                 thirdTask.id
             );
 
-            await page.goto(
-                BASE_URL
-            );
+            await openApplication(page);
 
             await page
                 .getByLabel(
                     "Search tasks"
                 )
                 .fill(
-                    "unique-description-search"
+                    `${token}-description-search`
                 );
 
             await expect(
@@ -601,7 +684,7 @@ test(
                     "Search tasks"
                 )
                 .fill(
-                    "unique-remark-search"
+                    `${token}-remark-search`
                 );
 
             await expect(
@@ -750,9 +833,11 @@ test(
                 index++
             ) {
                 const numberText =
-                    index < 10
-                        ? `0${index}`
-                        : `${index}`;
+                    String(index)
+                        .padStart(
+                            2,
+                            "0"
+                        );
 
                 const task =
                     await createTask(
@@ -772,9 +857,7 @@ test(
                 );
             }
 
-            await page.goto(
-                BASE_URL
-            );
+            await openApplication(page);
 
             await page
                 .getByLabel(
