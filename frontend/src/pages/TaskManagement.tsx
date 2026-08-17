@@ -74,18 +74,17 @@ const darkColors: ThemeColors = {
 function getSavedTheme(): ThemeColors {
     try {
         const savedTheme =
-            localStorage.getItem("task-management-theme");
+            localStorage.getItem(
+                "task-management-theme"
+            );
 
         if (!savedTheme) {
             return lightColors;
         }
 
-        const parsedTheme =
-            JSON.parse(savedTheme) as Partial<ThemeColors>;
-
         return {
             ...lightColors,
-            ...parsedTheme
+            ...JSON.parse(savedTheme)
         };
     }
     catch {
@@ -95,9 +94,12 @@ function getSavedTheme(): ThemeColors {
 
 function getLocalDateString() {
     const now = new Date();
-    const offset = now.getTimezoneOffset() * 60000;
+    const offset =
+        now.getTimezoneOffset() * 60000;
 
-    return new Date(now.getTime() - offset)
+    return new Date(
+        now.getTime() - offset
+    )
         .toISOString()
         .slice(0, 10);
 }
@@ -107,34 +109,37 @@ function addDays(
     numberOfDays: number
 ) {
     const [year, month, day] =
-        dateText.split("-").map(Number);
+        dateText
+            .split("-")
+            .map(Number);
 
-    const date = new Date(
-        year,
-        month - 1,
-        day
-    );
+    const date =
+        new Date(
+            year,
+            month - 1,
+            day
+        );
 
     date.setDate(
         date.getDate() + numberOfDays
     );
 
-    const newYear = date.getFullYear();
-
-    const newMonth =
-        String(date.getMonth() + 1)
-            .padStart(2, "0");
-
-    const newDay =
-        String(date.getDate())
-            .padStart(2, "0");
-
-    return `${newYear}-${newMonth}-${newDay}`;
+    return [
+        date.getFullYear(),
+        String(
+            date.getMonth() + 1
+        ).padStart(2, "0"),
+        String(
+            date.getDate()
+        ).padStart(2, "0")
+    ].join("-");
 }
 
 function formatTimeTo12Hour(time: string) {
     const match =
-        time.match(/^([01]\d|2[0-3]):([0-5]\d)/);
+        time.match(
+            /^([01]\d|2[0-3]):([0-5]\d)/
+        );
 
     if (!match) {
         return time;
@@ -142,17 +147,25 @@ function formatTimeTo12Hour(time: string) {
 
     const hour = Number(match[1]);
     const minute = match[2];
-    const period = hour >= 12 ? "PM" : "AM";
-    const displayHour = hour % 12 || 12;
+    const period =
+        hour >= 12 ? "PM" : "AM";
 
-    return `${String(displayHour).padStart(2, "0")}:${minute} ${period}`;
+    const displayHour =
+        hour % 12 || 12;
+
+    return (
+        `${String(displayHour)
+            .padStart(2, "0")}:${minute} ${period}`
+    );
 }
 
 function parseManualTime(
     input: string
 ): ParsedTime | null {
     const value =
-        input.trim().toUpperCase();
+        input
+            .trim()
+            .toUpperCase();
 
     const twelveHourMatch =
         value.match(
@@ -160,34 +173,51 @@ function parseManualTime(
         );
 
     if (twelveHourMatch) {
-        let hour = Number(twelveHourMatch[1]);
-        const minute = twelveHourMatch[2];
-        const period = twelveHourMatch[3];
+        let hour =
+            Number(twelveHourMatch[1]);
 
-        if (period === "AM" && hour === 12) {
+        const minute =
+            twelveHourMatch[2];
+
+        const period =
+            twelveHourMatch[3];
+
+        if (
+            period === "AM" &&
+            hour === 12
+        ) {
             hour = 0;
         }
 
-        if (period === "PM" && hour !== 12) {
+        if (
+            period === "PM" &&
+            hour !== 12
+        ) {
             hour += 12;
         }
 
         return {
             normalizedTime:
-                `${String(hour).padStart(2, "0")}:${minute}`,
+                `${String(hour)
+                    .padStart(2, "0")}:${minute}`,
             dayOffset: 0
         };
     }
 
     const manualMatch =
-        value.match(/^(\d{1,3}):([0-5]\d)$/);
+        value.match(
+            /^(\d{1,3}):([0-5]\d)$/
+        );
 
     if (!manualMatch) {
         return null;
     }
 
-    const enteredHour = Number(manualMatch[1]);
-    const minute = manualMatch[2];
+    const enteredHour =
+        Number(manualMatch[1]);
+
+    const minute =
+        manualMatch[2];
 
     let normalizedHour: number;
     let dayOffset = 0;
@@ -203,7 +233,9 @@ function parseManualTime(
     }
     else {
         dayOffset =
-            Math.floor(enteredHour / 24);
+            Math.floor(
+                enteredHour / 24
+            );
 
         normalizedHour =
             enteredHour % 24;
@@ -211,9 +243,129 @@ function parseManualTime(
 
     return {
         normalizedTime:
-            `${String(normalizedHour).padStart(2, "0")}:${minute}`,
+            `${String(normalizedHour)
+                .padStart(2, "0")}:${minute}`,
         dayOffset
     };
+}
+
+function getStatusClass(status: string) {
+    switch (status) {
+        case "Completed":
+            return "completed";
+
+        case "In Progress":
+            return "in-progress";
+
+        default:
+            return "pending";
+    }
+}
+
+function getPriorityClass(priority: string) {
+    switch (priority) {
+        case "High":
+            return "priority-high";
+
+        case "Low":
+            return "priority-low";
+
+        default:
+            return "priority-medium";
+    }
+}
+
+function getDueInformation(task: TaskItem) {
+    if (task.status === "Completed") {
+        return {
+            className: "due-completed",
+            text: "Completed"
+        };
+    }
+
+    const time =
+        task.dueTime.slice(0, 5);
+
+    const dueDateTime =
+        new Date(
+            `${task.dueDate}T${time}:00`
+        );
+
+    const now = new Date();
+    const today = getLocalDateString();
+
+    if (
+        !Number.isNaN(
+            dueDateTime.getTime()
+        ) &&
+        dueDateTime < now
+    ) {
+        return {
+            className: "due-overdue",
+            text: "Overdue"
+        };
+    }
+
+    if (task.dueDate === today) {
+        return {
+            className: "due-today",
+            text: "Due Today"
+        };
+    }
+
+    const difference =
+        dueDateTime.getTime() -
+        now.getTime();
+
+    const hoursRemaining =
+        difference /
+        (1000 * 60 * 60);
+
+    if (
+        hoursRemaining > 0 &&
+        hoursRemaining <= 48
+    ) {
+        return {
+            className: "due-soon",
+            text: "Due Soon"
+        };
+    }
+
+    return {
+        className: "due-upcoming",
+        text: "Upcoming"
+    };
+}
+
+function formatApiError(
+    data: unknown,
+    fallback: string
+) {
+    if (
+        typeof data === "string" &&
+        data.trim()
+    ) {
+        return data;
+    }
+
+    if (
+        data &&
+        typeof data === "object"
+    ) {
+        const problem =
+            data as {
+                detail?: string;
+                title?: string;
+            };
+
+        return (
+            problem.detail ||
+            problem.title ||
+            fallback
+        );
+    }
+
+    return fallback;
 }
 
 function TimeInput({
@@ -227,12 +379,14 @@ function TimeInput({
     const pickerReference =
         useRef<HTMLInputElement>(null);
 
-    const [displayValue, setDisplayValue] =
-        useState(
-            value
-                ? formatTimeTo12Hour(value)
-                : ""
-        );
+    const [
+        displayValue,
+        setDisplayValue
+    ] = useState(
+        value
+            ? formatTimeTo12Hour(value)
+            : ""
+    );
 
     useEffect(() => {
         setDisplayValue(
@@ -242,7 +396,9 @@ function TimeInput({
         );
     }, [value]);
 
-    function handleManualInput(input: string) {
+    function handleManualInput(
+        input: string
+    ) {
         if (
             !/^[0-9:aApPmM\s]*$/.test(input) ||
             input.length > 8
@@ -258,7 +414,8 @@ function TimeInput({
             return;
         }
 
-        const parsed = parseManualTime(input);
+        const parsed =
+            parseManualTime(input);
 
         if (!parsed) {
             onChange("");
@@ -285,7 +442,10 @@ function TimeInput({
         }
 
         onError("");
-        onChange(parsed.normalizedTime);
+
+        onChange(
+            parsed.normalizedTime
+        );
 
         setDisplayValue(
             formatTimeTo12Hour(
@@ -353,45 +513,18 @@ function TimeInput({
                 aria-hidden="true"
                 onChange={(event) => {
                     onError("");
-                    onChange(event.target.value);
+                    onChange(
+                        event.target.value
+                    );
                 }}
             />
         </div>
     );
 }
 
-function formatApiError(
-    data: unknown,
-    fallback: string
-) {
-    if (
-        typeof data === "string" &&
-        data.trim()
-    ) {
-        return data;
-    }
-
-    if (
-        data &&
-        typeof data === "object"
-    ) {
-        const problem = data as {
-            detail?: string;
-            title?: string;
-        };
-
-        return (
-            problem.detail ||
-            problem.title ||
-            fallback
-        );
-    }
-
-    return fallback;
-}
-
 function TaskManagement() {
-    const today = getLocalDateString();
+    const today =
+        getLocalDateString();
 
     const [tasks, setTasks] =
         useState<TaskItem[]>([]);
@@ -423,44 +556,66 @@ function TaskManagement() {
     const [editTitle, setEditTitle] =
         useState("");
 
-    const [editDescription, setEditDescription] =
-        useState("");
+    const [
+        editDescription,
+        setEditDescription
+    ] = useState("");
 
     const [editStatus, setEditStatus] =
         useState("");
 
-    const [editPriority, setEditPriority] =
-        useState("");
+    const [
+        editPriority,
+        setEditPriority
+    ] = useState("");
 
-    const [editDueDate, setEditDueDate] =
-        useState("");
+    const [
+        editDueDate,
+        setEditDueDate
+    ] = useState("");
 
-    const [editDueTime, setEditDueTime] =
-        useState("");
+    const [
+        editDueTime,
+        setEditDueTime
+    ] = useState("");
 
-    const [editRemark, setEditRemark] =
-        useState("");
+    const [
+        editRemark,
+        setEditRemark
+    ] = useState("");
 
     const [searchText, setSearchText] =
         useState("");
 
-    const [statusFilter, setStatusFilter] =
-        useState("All");
+    const [
+        statusFilter,
+        setStatusFilter
+    ] = useState("All");
 
-    const [priorityFilter, setPriorityFilter] =
-        useState("All");
+    const [
+        priorityFilter,
+        setPriorityFilter
+    ] = useState("All");
 
-    const [sortField, setSortField] =
-        useState<SortField>("created");
+    const [
+        sortField,
+        setSortField
+    ] = useState<SortField>("created");
 
-    const [sortDirection, setSortDirection] =
-        useState<SortDirection>("asc");
+    const [
+        sortDirection,
+        setSortDirection
+    ] = useState<SortDirection>("asc");
 
-    const [viewMode, setViewMode] =
-        useState<ViewMode>("pagination");
+    const [
+        viewMode,
+        setViewMode
+    ] = useState<ViewMode>("pagination");
 
-    const [currentPage, setCurrentPage] =
-        useState(1);
+    const [
+        currentPage,
+        setCurrentPage
+    ] = useState(1);
 
     const [error, setError] =
         useState("");
@@ -471,7 +626,9 @@ function TaskManagement() {
     ] = useState(false);
 
     const [colors, setColors] =
-        useState<ThemeColors>(getSavedTheme);
+        useState<ThemeColors>(
+            getSavedTheme
+        );
 
     useEffect(() => {
         loadTasks();
@@ -563,10 +720,12 @@ function TaskManagement() {
         property: keyof ThemeColors,
         value: string
     ) {
-        setColors((currentColors) => ({
-            ...currentColors,
-            [property]: value
-        }));
+        setColors(
+            (currentColors) => ({
+                ...currentColors,
+                [property]: value
+            })
+        );
     }
 
     async function loadTasks() {
@@ -616,7 +775,11 @@ function TaskManagement() {
         const validTimePattern =
             /^([01]\d|2[0-3]):[0-5]\d$/;
 
-        if (!validTimePattern.test(taskTime)) {
+        if (
+            !validTimePattern.test(
+                taskTime
+            )
+        ) {
             setError(
                 "Please enter or select a valid due time."
             );
@@ -641,7 +804,10 @@ function TaskManagement() {
             return false;
         }
 
-        if (selectedDateTime <= new Date()) {
+        if (
+            selectedDateTime <=
+            new Date()
+        ) {
             setError(
                 "Due date and time must be in the future."
             );
@@ -694,7 +860,8 @@ function TaskManagement() {
                                 "application/json"
                         },
                         body: JSON.stringify({
-                            title: title.trim(),
+                            title:
+                                title.trim(),
                             description,
                             status,
                             priority,
@@ -745,7 +912,9 @@ function TaskManagement() {
         setEditDueTime(
             task.dueTime.slice(0, 5)
         );
-        setEditRemark(task.remark ?? "");
+        setEditRemark(
+            task.remark ?? ""
+        );
         setError("");
     }
 
@@ -779,7 +948,8 @@ function TaskManagement() {
                         },
                         body: JSON.stringify({
                             id,
-                            title: editTitle.trim(),
+                            title:
+                                editTitle.trim(),
                             description:
                                 editDescription,
                             status:
@@ -808,6 +978,7 @@ function TaskManagement() {
             }
 
             setEditingId(null);
+
             await loadTasks();
         }
         catch {
@@ -862,26 +1033,21 @@ function TaskManagement() {
 
             return [...tasks]
                 .filter((task) => {
-                    const taskTitle =
-                        task.title ?? "";
-
-                    const taskDescription =
-                        task.description ?? "";
-
-                    const taskRemark =
-                        task.remark ?? "";
+                    const searchableText =
+                        [
+                            task.title,
+                            task.description,
+                            task.remark
+                        ]
+                            .filter(Boolean)
+                            .join(" ")
+                            .toLowerCase();
 
                     const matchesSearch =
                         query === "" ||
-                        taskTitle
-                            .toLowerCase()
-                            .includes(query) ||
-                        taskDescription
-                            .toLowerCase()
-                            .includes(query) ||
-                        taskRemark
-                            .toLowerCase()
-                            .includes(query);
+                        searchableText.includes(
+                            query
+                        );
 
                     const matchesStatus =
                         statusFilter === "All" ||
@@ -937,9 +1103,11 @@ function TaskManagement() {
                             secondValue
                         );
 
-                    return sortDirection === "asc"
-                        ? comparison
-                        : -comparison;
+                    return (
+                        sortDirection === "asc"
+                            ? comparison
+                            : -comparison
+                    );
                 });
         }, [
             tasks,
@@ -949,6 +1117,43 @@ function TaskManagement() {
             sortField,
             sortDirection
         ]);
+
+    const taskSummary =
+        useMemo(() => {
+            const pending =
+                tasks.filter(
+                    (task) =>
+                        task.status === "Pending"
+                ).length;
+
+            const inProgress =
+                tasks.filter(
+                    (task) =>
+                        task.status === "In Progress"
+                ).length;
+
+            const completed =
+                tasks.filter(
+                    (task) =>
+                        task.status === "Completed"
+                ).length;
+
+            const percentage =
+                tasks.length === 0
+                    ? 0
+                    : Math.round(
+                        completed /
+                        tasks.length *
+                        100
+                    );
+
+            return {
+                pending,
+                inProgress,
+                completed,
+                percentage
+            };
+        }, [tasks]);
 
     const totalPages =
         Math.max(
@@ -969,23 +1174,42 @@ function TaskManagement() {
         viewMode === "all"
             ? filteredTasks
             : filteredTasks.slice(
-                (safePage - 1) * PAGE_SIZE,
-                safePage * PAGE_SIZE
+                (safePage - 1) *
+                PAGE_SIZE,
+                safePage *
+                PAGE_SIZE
             );
 
     useEffect(() => {
-        if (currentPage > totalPages) {
-            setCurrentPage(totalPages);
+        if (
+            currentPage >
+            totalPages
+        ) {
+            setCurrentPage(
+                totalPages
+            );
         }
     }, [
         currentPage,
         totalPages
     ]);
 
+    function clearFilters() {
+        setSearchText("");
+        setStatusFilter("All");
+        setPriorityFilter("All");
+        setSortField("created");
+        setSortDirection("asc");
+    }
+
     return (
         <div className="task-page">
-            <div className="task-header">
+            <header className="task-header">
                 <div className="task-title">
+                    <span className="dashboard-label">
+                        Personal Productivity Dashboard
+                    </span>
+
                     <h1>
                         Task Management
                     </h1>
@@ -1004,7 +1228,7 @@ function TaskManagement() {
                 >
                     🎨 Customize Theme
                 </button>
-            </div>
+            </header>
 
             {showThemeSettings && (
                 <div
@@ -1075,142 +1299,177 @@ function TaskManagement() {
                         </div>
 
                         <div className="theme-color-list">
-                            <label>
-                                <span>
-                                    Page Background
-                                </span>
+                            {(
+                                [
+                                    [
+                                        "pageBackground",
+                                        "Page Background"
+                                    ],
+                                    [
+                                        "cardBackground",
+                                        "Card Background"
+                                    ],
+                                    [
+                                        "inputBackground",
+                                        "Input Background"
+                                    ],
+                                    [
+                                        "textColor",
+                                        "Main Word Color"
+                                    ],
+                                    [
+                                        "secondaryTextColor",
+                                        "Secondary Word Color"
+                                    ],
+                                    [
+                                        "accentColor",
+                                        "Button Color"
+                                    ],
+                                    [
+                                        "borderColor",
+                                        "Border Color"
+                                    ]
+                                ] as Array<
+                                    [
+                                        keyof ThemeColors,
+                                        string
+                                    ]
+                                >
+                            ).map(
+                                ([
+                                    property,
+                                    label
+                                ]) => (
+                                    <label key={property}>
+                                        <span>
+                                            {label}
+                                        </span>
 
-                                <input
-                                    type="color"
-                                    value={
-                                        colors.pageBackground
-                                    }
-                                    onChange={(event) =>
-                                        updateColor(
-                                            "pageBackground",
-                                            event.target.value
-                                        )
-                                    }
-                                />
-                            </label>
-
-                            <label>
-                                <span>
-                                    Card Background
-                                </span>
-
-                                <input
-                                    type="color"
-                                    value={
-                                        colors.cardBackground
-                                    }
-                                    onChange={(event) =>
-                                        updateColor(
-                                            "cardBackground",
-                                            event.target.value
-                                        )
-                                    }
-                                />
-                            </label>
-
-                            <label>
-                                <span>
-                                    Input Background
-                                </span>
-
-                                <input
-                                    type="color"
-                                    value={
-                                        colors.inputBackground
-                                    }
-                                    onChange={(event) =>
-                                        updateColor(
-                                            "inputBackground",
-                                            event.target.value
-                                        )
-                                    }
-                                />
-                            </label>
-
-                            <label>
-                                <span>
-                                    Main Word Color
-                                </span>
-
-                                <input
-                                    type="color"
-                                    value={
-                                        colors.textColor
-                                    }
-                                    onChange={(event) =>
-                                        updateColor(
-                                            "textColor",
-                                            event.target.value
-                                        )
-                                    }
-                                />
-                            </label>
-
-                            <label>
-                                <span>
-                                    Secondary Word Color
-                                </span>
-
-                                <input
-                                    type="color"
-                                    value={
-                                        colors.secondaryTextColor
-                                    }
-                                    onChange={(event) =>
-                                        updateColor(
-                                            "secondaryTextColor",
-                                            event.target.value
-                                        )
-                                    }
-                                />
-                            </label>
-
-                            <label>
-                                <span>
-                                    Button Color
-                                </span>
-
-                                <input
-                                    type="color"
-                                    value={
-                                        colors.accentColor
-                                    }
-                                    onChange={(event) =>
-                                        updateColor(
-                                            "accentColor",
-                                            event.target.value
-                                        )
-                                    }
-                                />
-                            </label>
-
-                            <label>
-                                <span>
-                                    Border Color
-                                </span>
-
-                                <input
-                                    type="color"
-                                    value={
-                                        colors.borderColor
-                                    }
-                                    onChange={(event) =>
-                                        updateColor(
-                                            "borderColor",
-                                            event.target.value
-                                        )
-                                    }
-                                />
-                            </label>
+                                        <input
+                                            type="color"
+                                            value={
+                                                colors[property]
+                                            }
+                                            onChange={(event) =>
+                                                updateColor(
+                                                    property,
+                                                    event.target.value
+                                                )
+                                            }
+                                        />
+                                    </label>
+                                )
+                            )}
                         </div>
                     </aside>
                 </div>
             )}
+
+            <section
+                className="task-summary"
+                aria-label="Task summary"
+            >
+                <article className="summary-card total-summary">
+                    <span>Total Tasks</span>
+                    <strong>{tasks.length}</strong>
+                </article>
+
+                <article className="summary-card pending-summary">
+                    <span>Pending</span>
+                    <strong>
+                        {taskSummary.pending}
+                    </strong>
+                </article>
+
+                <article className="summary-card progress-summary">
+                    <span>In Progress</span>
+                    <strong>
+                        {taskSummary.inProgress}
+                    </strong>
+                </article>
+
+                <article className="summary-card completed-summary">
+                    <span>Completed</span>
+                    <strong>
+                        {taskSummary.completed}
+                    </strong>
+                </article>
+
+                <div className="completion-panel">
+                    <div className="completion-heading">
+                        <span>
+                            Task Progress
+                        </span>
+
+                        <strong>
+                            {taskSummary.percentage}% Completed
+                        </strong>
+                    </div>
+
+                    <div
+                        className="completion-track"
+                        role="progressbar"
+                        aria-label="Task completion progress"
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={
+                            taskSummary.percentage
+                        }
+                    >
+                        {tasks.length > 0 && (
+                            <>
+                                <div
+                                    className="progress-segment pending-segment"
+                                    style={{
+                                        width: `${taskSummary.pending /
+                                            tasks.length *
+                                            100
+                                            }%`
+                                    }}
+                                />
+
+                                <div
+                                    className="progress-segment in-progress-segment"
+                                    style={{
+                                        width: `${taskSummary.inProgress /
+                                            tasks.length *
+                                            100
+                                            }%`
+                                    }}
+                                />
+
+                                <div
+                                    className="progress-segment completed-segment"
+                                    style={{
+                                        width: `${taskSummary.completed /
+                                            tasks.length *
+                                            100
+                                            }%`
+                                    }}
+                                />
+                            </>
+                        )}
+                    </div>
+
+                    <div className="progress-legend">
+                        <span>
+                            <i className="legend-dot pending-dot" />
+                            Pending {taskSummary.pending}
+                        </span>
+
+                        <span>
+                            <i className="legend-dot in-progress-dot" />
+                            In Progress {taskSummary.inProgress}
+                        </span>
+
+                        <span>
+                            <i className="legend-dot completed-dot" />
+                            Completed {taskSummary.completed}
+                        </span>
+                    </div>
+                </div>
+
+            </section>
 
             {error && (
                 <div
@@ -1221,10 +1480,8 @@ function TaskManagement() {
                 </div>
             )}
 
-            <div className="task-form">
-                <h2>
-                    Add Task
-                </h2>
+            <section className="task-form">
+                <h2>Add Task</h2>
 
                 <div className="task-form-grid">
                     <div className="full-width">
@@ -1254,67 +1511,61 @@ function TaskManagement() {
                         />
                     </div>
 
-                    <div>
-                        <select
-                            aria-label="Task status"
-                            value={status}
-                            onChange={(event) =>
-                                setStatus(
-                                    event.target.value
-                                )
-                            }
-                        >
-                            <option value="Pending">
-                                Pending
-                            </option>
+                    <select
+                        aria-label="Task status"
+                        value={status}
+                        onChange={(event) =>
+                            setStatus(
+                                event.target.value
+                            )
+                        }
+                    >
+                        <option value="Pending">
+                            Pending
+                        </option>
 
-                            <option value="In Progress">
-                                In Progress
-                            </option>
+                        <option value="In Progress">
+                            In Progress
+                        </option>
 
-                            <option value="Completed">
-                                Completed
-                            </option>
-                        </select>
-                    </div>
+                        <option value="Completed">
+                            Completed
+                        </option>
+                    </select>
 
-                    <div>
-                        <select
-                            aria-label="Task priority"
-                            value={priority}
-                            onChange={(event) =>
-                                setPriority(
-                                    event.target.value
-                                )
-                            }
-                        >
-                            <option value="Low">
-                                Low Priority
-                            </option>
+                    <select
+                        aria-label="Task priority"
+                        value={priority}
+                        onChange={(event) =>
+                            setPriority(
+                                event.target.value
+                            )
+                        }
+                    >
+                        <option value="Low">
+                            Low Priority
+                        </option>
 
-                            <option value="Medium">
-                                Medium Priority
-                            </option>
+                        <option value="Medium">
+                            Medium Priority
+                        </option>
 
-                            <option value="High">
-                                High Priority
-                            </option>
-                        </select>
-                    </div>
+                        <option value="High">
+                            High Priority
+                        </option>
+                    </select>
 
-                    <div>
-                        <input
-                            aria-label="Due date"
-                            type="date"
-                            min={today}
-                            value={dueDate}
-                            onChange={(event) =>
-                                setDueDate(
-                                    event.target.value
-                                )
-                            }
-                        />
-                    </div>
+                    <input
+                        aria-label="Due date"
+                        type="date"
+                        min={today}
+                        value={dueDate}
+                        onChange={(event) =>
+                            setDueDate(
+                                event.target.value
+                            )
+                        }
+                    />
 
                     <TimeInput
                         label="Due time"
@@ -1346,14 +1597,12 @@ function TaskManagement() {
                 >
                     Add Task
                 </button>
-            </div>
+            </section>
 
-            <div className="task-list">
+            <section className="task-list">
                 <div className="list-heading">
                     <div>
-                        <h2>
-                            My Tasks
-                        </h2>
+                        <h2>My Tasks</h2>
 
                         <span className="result-count">
                             {filteredTasks.length}{" "}
@@ -1389,9 +1638,7 @@ function TaskManagement() {
 
                 <div className="task-toolbar">
                     <label className="search-control">
-                        <span>
-                            Search
-                        </span>
+                        <span>Search</span>
 
                         <input
                             type="search"
@@ -1407,9 +1654,7 @@ function TaskManagement() {
                     </label>
 
                     <label>
-                        <span>
-                            Status
-                        </span>
+                        <span>Status</span>
 
                         <select
                             aria-label="Filter by status"
@@ -1439,9 +1684,7 @@ function TaskManagement() {
                     </label>
 
                     <label>
-                        <span>
-                            Priority
-                        </span>
+                        <span>Priority</span>
 
                         <select
                             aria-label="Filter by priority"
@@ -1472,9 +1715,7 @@ function TaskManagement() {
 
                     <div className="sort-control">
                         <label>
-                            <span>
-                                Sort Tasks
-                            </span>
+                            <span>Sort Tasks</span>
 
                             <select
                                 aria-label="Sort by"
@@ -1526,6 +1767,14 @@ function TaskManagement() {
                                 : "↓"}
                         </button>
                     </div>
+
+                    <button
+                        type="button"
+                        className="clear-filters-button"
+                        onClick={clearFilters}
+                    >
+                        Clear
+                    </button>
                 </div>
 
                 {visibleTasks.length === 0 ? (
@@ -1539,245 +1788,273 @@ function TaskManagement() {
                         className="task-grid"
                         data-testid="task-grid"
                     >
-                        {visibleTasks.map((task) => (
-                            <div
-                                key={task.id}
-                                data-testid="task-card"
-                                className={
-                                    task.status ===
-                                        "Completed"
-                                        ? "task-card completed"
-                                        : "task-card"
-                                }
-                            >
-                                {editingId === task.id ? (
-                                    <div className="edit-form">
-                                        <input
-                                            aria-label="Edit title"
-                                            type="text"
-                                            value={editTitle}
-                                            onChange={(event) =>
-                                                setEditTitle(
-                                                    event.target.value
-                                                )
-                                            }
-                                        />
+                        {visibleTasks.map(
+                            (task) => {
+                                const dueInformation =
+                                    getDueInformation(
+                                        task
+                                    );
 
-                                        <textarea
-                                            aria-label="Edit description"
-                                            value={editDescription}
-                                            onChange={(event) =>
-                                                setEditDescription(
-                                                    event.target.value
-                                                )
-                                            }
-                                        />
+                                return (
+                                    <article
+                                        key={task.id}
+                                        data-testid="task-card"
+                                        className={
+                                            `task-card ${getStatusClass(
+                                                task.status
+                                            )}`
+                                        }
+                                    >
+                                        {editingId === task.id ? (
+                                            <div className="edit-form">
+                                                <input
+                                                    aria-label="Edit title"
+                                                    type="text"
+                                                    value={editTitle}
+                                                    onChange={(event) =>
+                                                        setEditTitle(
+                                                            event.target.value
+                                                        )
+                                                    }
+                                                />
 
-                                        <select
-                                            aria-label="Edit status"
-                                            value={editStatus}
-                                            onChange={(event) =>
-                                                setEditStatus(
-                                                    event.target.value
-                                                )
-                                            }
-                                        >
-                                            <option value="Pending">
-                                                Pending
-                                            </option>
+                                                <textarea
+                                                    aria-label="Edit description"
+                                                    value={editDescription}
+                                                    onChange={(event) =>
+                                                        setEditDescription(
+                                                            event.target.value
+                                                        )
+                                                    }
+                                                />
 
-                                            <option value="In Progress">
-                                                In Progress
-                                            </option>
+                                                <select
+                                                    aria-label="Edit status"
+                                                    value={editStatus}
+                                                    onChange={(event) =>
+                                                        setEditStatus(
+                                                            event.target.value
+                                                        )
+                                                    }
+                                                >
+                                                    <option value="Pending">
+                                                        Pending
+                                                    </option>
 
-                                            <option value="Completed">
-                                                Completed
-                                            </option>
-                                        </select>
+                                                    <option value="In Progress">
+                                                        In Progress
+                                                    </option>
 
-                                        <select
-                                            aria-label="Edit priority"
-                                            value={editPriority}
-                                            onChange={(event) =>
-                                                setEditPriority(
-                                                    event.target.value
-                                                )
-                                            }
-                                        >
-                                            <option value="Low">
-                                                Low
-                                            </option>
+                                                    <option value="Completed">
+                                                        Completed
+                                                    </option>
+                                                </select>
 
-                                            <option value="Medium">
-                                                Medium
-                                            </option>
+                                                <select
+                                                    aria-label="Edit priority"
+                                                    value={editPriority}
+                                                    onChange={(event) =>
+                                                        setEditPriority(
+                                                            event.target.value
+                                                        )
+                                                    }
+                                                >
+                                                    <option value="Low">
+                                                        Low
+                                                    </option>
 
-                                            <option value="High">
-                                                High
-                                            </option>
-                                        </select>
+                                                    <option value="Medium">
+                                                        Medium
+                                                    </option>
 
-                                        <input
-                                            aria-label="Edit due date"
-                                            type="date"
-                                            min={today}
-                                            value={editDueDate}
-                                            onChange={(event) =>
-                                                setEditDueDate(
-                                                    event.target.value
-                                                )
-                                            }
-                                        />
+                                                    <option value="High">
+                                                        High
+                                                    </option>
+                                                </select>
 
-                                        <TimeInput
-                                            label="Edit due time"
-                                            value={editDueTime}
-                                            dateValue={editDueDate}
-                                            onChange={setEditDueTime}
-                                            onDateChange={
-                                                setEditDueDate
-                                            }
-                                            onError={setError}
-                                        />
+                                                <input
+                                                    aria-label="Edit due date"
+                                                    type="date"
+                                                    min={today}
+                                                    value={editDueDate}
+                                                    onChange={(event) =>
+                                                        setEditDueDate(
+                                                            event.target.value
+                                                        )
+                                                    }
+                                                />
 
-                                        <textarea
-                                            aria-label="Edit remark"
-                                            placeholder="Remark / Note"
-                                            value={editRemark}
-                                            onChange={(event) =>
-                                                setEditRemark(
-                                                    event.target.value
-                                                )
-                                            }
-                                        />
+                                                <TimeInput
+                                                    label="Edit due time"
+                                                    value={editDueTime}
+                                                    dateValue={editDueDate}
+                                                    onChange={setEditDueTime}
+                                                    onDateChange={
+                                                        setEditDueDate
+                                                    }
+                                                    onError={setError}
+                                                />
 
-                                        <div className="task-actions">
-                                            <button
-                                                type="button"
-                                                className="save-button"
-                                                onClick={() =>
-                                                    saveTask(
-                                                        task.id
-                                                    )
-                                                }
-                                            >
-                                                Save
-                                            </button>
+                                                <textarea
+                                                    aria-label="Edit remark"
+                                                    placeholder="Remark / Note"
+                                                    value={editRemark}
+                                                    onChange={(event) =>
+                                                        setEditRemark(
+                                                            event.target.value
+                                                        )
+                                                    }
+                                                />
 
-                                            <button
-                                                type="button"
-                                                className="cancel-button"
-                                                onClick={cancelEdit}
-                                            >
-                                                Cancel
-                                            </button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <h3>
-                                            {task.title}
-                                        </h3>
+                                                <div className="task-actions">
+                                                    <button
+                                                        type="button"
+                                                        className="save-button"
+                                                        onClick={() =>
+                                                            saveTask(
+                                                                task.id
+                                                            )
+                                                        }
+                                                    >
+                                                        Save
+                                                    </button>
 
-                                        <p className="task-description">
-                                            {task.description ||
-                                                "No description"}
-                                        </p>
+                                                    <button
+                                                        type="button"
+                                                        className="cancel-button"
+                                                        onClick={cancelEdit}
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div className="task-card-header">
+                                                    <h3>
+                                                        {task.title}
+                                                    </h3>
 
-                                        <p className="task-info">
-                                            <strong>
-                                                Status:
-                                            </strong>{" "}
-                                            {task.status}
-                                        </p>
+                                                    <span
+                                                        className={
+                                                            `due-badge ${dueInformation.className}`
+                                                        }
+                                                    >
+                                                        {dueInformation.text}
+                                                    </span>
+                                                </div>
 
-                                        <p className="task-info">
-                                            <strong>
-                                                Priority:
-                                            </strong>{" "}
-                                            {task.priority}
-                                        </p>
+                                                <p className="task-description">
+                                                    {task.description ||
+                                                        "No description"}
+                                                </p>
 
-                                        <p className="task-info">
-                                            <strong>
-                                                Due:
-                                            </strong>{" "}
-                                            {task.dueDate}{" "}
-                                            {formatTimeTo12Hour(
-                                                task.dueTime.slice(
-                                                    0,
-                                                    5
-                                                )
-                                            )}
-                                        </p>
+                                                <div className="task-badges">
+                                                    <span
+                                                        className={
+                                                            `status-badge ${getStatusClass(
+                                                                task.status
+                                                            )}`
+                                                        }
+                                                    >
+                                                        {task.status}
+                                                    </span>
 
-                                        {task.remark && (
-                                            <p className="task-info">
-                                                <strong>
-                                                    Remark:
-                                                </strong>{" "}
-                                                {task.remark}
-                                            </p>
+                                                    <span
+                                                        className={
+                                                            `priority-badge ${getPriorityClass(
+                                                                task.priority
+                                                            )}`
+                                                        }
+                                                    >
+                                                        {task.priority} Priority
+                                                    </span>
+                                                </div>
+
+                                                <p className="task-info">
+                                                    <strong>
+                                                        Due:
+                                                    </strong>{" "}
+                                                    {task.dueDate}{" "}
+                                                    {formatTimeTo12Hour(
+                                                        task.dueTime.slice(
+                                                            0,
+                                                            5
+                                                        )
+                                                    )}
+                                                </p>
+
+                                                {task.remark && (
+                                                    <p className="task-info">
+                                                        <strong>
+                                                            Remark:
+                                                        </strong>{" "}
+                                                        {task.remark}
+                                                    </p>
+                                                )}
+
+                                                <p className="task-info">
+                                                    <strong>
+                                                        Task Created:
+                                                    </strong>{" "}
+                                                    {new Date(
+                                                        task.createdAt
+                                                    ).toLocaleString()}
+                                                </p>
+
+                                                {task.updatedAt && (
+                                                    <p className="task-info">
+                                                        <strong>
+                                                            Last Updated:
+                                                        </strong>{" "}
+                                                        {new Date(
+                                                            task.updatedAt
+                                                        ).toLocaleString()}
+                                                    </p>
+                                                )}
+
+                                                {task.completedAt && (
+                                                    <p className="task-info">
+                                                        <strong>
+                                                            Completed:
+                                                        </strong>{" "}
+                                                        {new Date(
+                                                            task.completedAt
+                                                        ).toLocaleString()}
+                                                    </p>
+                                                )}
+
+                                                <div className="task-actions">
+                                                    <button
+                                                        type="button"
+                                                        className="edit-button"
+                                                        onClick={() =>
+                                                            startEdit(
+                                                                task
+                                                            )
+                                                        }
+                                                    >
+                                                        Edit
+                                                    </button>
+
+                                                    <button
+                                                        type="button"
+                                                        className="delete-button"
+                                                        onClick={() =>
+                                                            deleteTask(
+                                                                task.id
+                                                            )
+                                                        }
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </div>
+                                            </>
                                         )}
-
-                                        <p className="task-info">
-                                            <strong>
-                                                Task Created:
-                                            </strong>{" "}
-                                            {new Date(
-                                                task.createdAt
-                                            ).toLocaleString()}
-                                        </p>
-
-                                        {task.updatedAt && (
-                                            <p className="task-info">
-                                                <strong>
-                                                    Last Updated:
-                                                </strong>{" "}
-                                                {new Date(
-                                                    task.updatedAt
-                                                ).toLocaleString()}
-                                            </p>
-                                        )}
-
-                                        {task.completedAt && (
-                                            <p className="task-info">
-                                                <strong>
-                                                    Completed:
-                                                </strong>{" "}
-                                                {new Date(
-                                                    task.completedAt
-                                                ).toLocaleString()}
-                                            </p>
-                                        )}
-
-                                        <div className="task-actions">
-                                            <button
-                                                type="button"
-                                                className="edit-button"
-                                                onClick={() =>
-                                                    startEdit(task)
-                                                }
-                                            >
-                                                Edit
-                                            </button>
-
-                                            <button
-                                                type="button"
-                                                className="delete-button"
-                                                onClick={() =>
-                                                    deleteTask(
-                                                        task.id
-                                                    )
-                                                }
-                                            >
-                                                Delete
-                                            </button>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        ))}
+                                    </article>
+                                );
+                            }
+                        )}
                     </div>
                 )}
 
@@ -1789,7 +2066,9 @@ function TaskManagement() {
                         >
                             <button
                                 type="button"
-                                disabled={safePage === 1}
+                                disabled={
+                                    safePage === 1
+                                }
                                 onClick={() =>
                                     setCurrentPage(
                                         (page) =>
@@ -1809,36 +2088,39 @@ function TaskManagement() {
                                 },
                                 (_, index) =>
                                     index + 1
-                            ).map((pageNumber) => (
-                                <button
-                                    type="button"
-                                    key={pageNumber}
-                                    className={
-                                        pageNumber ===
-                                            safePage
-                                            ? "active"
-                                            : ""
-                                    }
-                                    aria-current={
-                                        pageNumber ===
-                                            safePage
-                                            ? "page"
-                                            : undefined
-                                    }
-                                    onClick={() =>
-                                        setCurrentPage(
-                                            pageNumber
-                                        )
-                                    }
-                                >
-                                    {pageNumber}
-                                </button>
-                            ))}
+                            ).map(
+                                (pageNumber) => (
+                                    <button
+                                        type="button"
+                                        key={pageNumber}
+                                        className={
+                                            pageNumber ===
+                                                safePage
+                                                ? "active"
+                                                : ""
+                                        }
+                                        aria-current={
+                                            pageNumber ===
+                                                safePage
+                                                ? "page"
+                                                : undefined
+                                        }
+                                        onClick={() =>
+                                            setCurrentPage(
+                                                pageNumber
+                                            )
+                                        }
+                                    >
+                                        {pageNumber}
+                                    </button>
+                                )
+                            )}
 
                             <button
                                 type="button"
                                 disabled={
-                                    safePage === totalPages
+                                    safePage ===
+                                    totalPages
                                 }
                                 onClick={() =>
                                     setCurrentPage(
@@ -1854,7 +2136,7 @@ function TaskManagement() {
                             </button>
                         </nav>
                     )}
-            </div>
+            </section>
         </div>
     );
 }
