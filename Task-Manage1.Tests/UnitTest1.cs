@@ -20,10 +20,16 @@ public class UnitTest1
         return new AppDbContext(options);
     }
 
+    private static DateOnly FutureDate(int days = 7)
+    {
+        return DateOnly.FromDateTime(
+            DateTime.Today.AddDays(days)
+        );
+    }
+
     [Fact]
     public async Task AddTask_ShouldAddTask()
     {
-        // Arrange
         var db = CreateDbContext();
 
         var controller =
@@ -35,15 +41,13 @@ public class UnitTest1
             Description = "Learn Docker testing",
             Status = "Pending",
             Priority = "High",
-            DueDate = new DateOnly(2026, 8, 20),
+            DueDate = FutureDate(),
             DueTime = new TimeOnly(17, 0),
             Remark = "Unit test"
         };
 
-        // Act
         await controller.AddTask(task);
 
-        // Assert
         var savedTask =
             await db.Tasks.FirstOrDefaultAsync();
 
@@ -68,7 +72,6 @@ public class UnitTest1
     [Fact]
     public async Task GetTasks_ShouldReturnTasks()
     {
-        // Arrange
         var db = CreateDbContext();
 
         db.Tasks.Add(new TaskItem
@@ -77,7 +80,7 @@ public class UnitTest1
             Description = "First task",
             Status = "Pending",
             Priority = "Medium",
-            DueDate = new DateOnly(2026, 8, 20),
+            DueDate = FutureDate(),
             DueTime = new TimeOnly(10, 0),
             Remark = ""
         });
@@ -88,7 +91,7 @@ public class UnitTest1
             Description = "Second task",
             Status = "In Progress",
             Priority = "High",
-            DueDate = new DateOnly(2026, 8, 21),
+            DueDate = FutureDate(8),
             DueTime = new TimeOnly(15, 0),
             Remark = ""
         });
@@ -98,11 +101,9 @@ public class UnitTest1
         var controller =
             new TasksController(db);
 
-        // Act
         var result =
             await controller.GetTasks();
 
-        // Assert
         var okResult =
             Assert.IsType<OkObjectResult>(result);
 
@@ -120,7 +121,6 @@ public class UnitTest1
     [Fact]
     public async Task UpdateTask_ShouldUpdateTask()
     {
-        // Arrange
         var db = CreateDbContext();
 
         var task = new TaskItem
@@ -129,7 +129,7 @@ public class UnitTest1
             Description = "Old description",
             Status = "Pending",
             Priority = "Low",
-            DueDate = new DateOnly(2026, 8, 20),
+            DueDate = FutureDate(),
             DueTime = new TimeOnly(10, 0),
             Remark = ""
         };
@@ -147,18 +147,16 @@ public class UnitTest1
             Description = "Updated description",
             Status = "In Progress",
             Priority = "High",
-            DueDate = new DateOnly(2026, 8, 25),
+            DueDate = FutureDate(8),
             DueTime = new TimeOnly(15, 30),
             Remark = "Task updated"
         };
 
-        // Act
         await controller.UpdateTask(
             task.Id,
             updatedTask
         );
 
-        // Assert
         var savedTask =
             await db.Tasks.FindAsync(task.Id);
 
@@ -197,7 +195,6 @@ public class UnitTest1
     [Fact]
     public async Task UpdateTask_Completed_ShouldSetCompletedAt()
     {
-        // Arrange
         var db = CreateDbContext();
 
         var task = new TaskItem
@@ -206,15 +203,17 @@ public class UnitTest1
             Description = "Complete testing",
             Status = "Pending",
             Priority = "High",
-            DueDate = new DateOnly(2026, 8, 20),
+            DueDate = FutureDate(),
             DueTime = new TimeOnly(17, 0),
             Remark = ""
         };
 
         db.Tasks.Add(task);
+
         await db.SaveChangesAsync();
 
-        var controller = new TasksController(db);
+        var controller =
+            new TasksController(db);
 
         var updatedTask = new TaskItem
         {
@@ -222,18 +221,16 @@ public class UnitTest1
             Description = "Complete testing",
             Status = "Completed",
             Priority = "High",
-            DueDate = new DateOnly(2026, 8, 20),
+            DueDate = FutureDate(),
             DueTime = new TimeOnly(17, 0),
             Remark = "Done"
         };
 
-        // Act
         await controller.UpdateTask(
             task.Id,
             updatedTask
         );
 
-        // Assert
         var savedTask =
             await db.Tasks.FindAsync(task.Id);
 
@@ -252,7 +249,6 @@ public class UnitTest1
     [Fact]
     public async Task DeleteTask_ShouldDeleteTask()
     {
-        // Arrange
         var db = CreateDbContext();
 
         var task = new TaskItem
@@ -261,30 +257,29 @@ public class UnitTest1
             Description = "Testing delete",
             Status = "Pending",
             Priority = "Low",
-            DueDate = new DateOnly(2026, 8, 20),
+            DueDate = FutureDate(),
             DueTime = new TimeOnly(10, 0),
             Remark = ""
         };
 
         db.Tasks.Add(task);
+
         await db.SaveChangesAsync();
 
-        var controller = new TasksController(db);
+        var controller =
+            new TasksController(db);
 
-        // Act
         await controller.DeleteTask(task.Id);
 
-        // Assert
         var deletedTask =
             await db.Tasks.FindAsync(task.Id);
 
         Assert.Null(deletedTask);
     }
-    //last
+
     [Fact]
     public async Task UpdateTask_InvalidId_ShouldReturnNotFound()
     {
-        // Arrange
         var db = CreateDbContext();
 
         var controller =
@@ -296,19 +291,17 @@ public class UnitTest1
             Description = "Testing invalid ID",
             Status = "Pending",
             Priority = "Medium",
-            DueDate = new DateOnly(2026, 8, 20),
+            DueDate = FutureDate(),
             DueTime = new TimeOnly(10, 0),
             Remark = ""
         };
 
-        // Act
         var result =
             await controller.UpdateTask(
                 999,
                 updatedTask
             );
 
-        // Assert
         Assert.IsType<NotFoundResult>(result);
     }
 }
