@@ -60,7 +60,7 @@ const lightColors: ThemeColors = {
     accentColor: "#4f46e5",
     borderColor: "#d1d5db"
 };
-
+ 
 const darkColors: ThemeColors = {
     pageBackground: "#111827",
     cardBackground: "#1f2937",
