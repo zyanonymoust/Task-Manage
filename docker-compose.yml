@@ -3,7 +3,6 @@ services:
   postgres:
     image: postgres:16
     container_name: task-postgres
-    restart: always
 
     environment:
       POSTGRES_DB: TaskDb
@@ -32,7 +31,6 @@ services:
       context: ./Task-Manage.Server
 
     container_name: task-api
-    restart: always
 
     depends_on:
       postgres:
@@ -55,7 +53,6 @@ services:
       context: ./frontend
 
     container_name: task-frontend
-    restart: always
 
     depends_on:
       - api
